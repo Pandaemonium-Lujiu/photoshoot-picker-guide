@@ -1,0 +1,13 @@
+{
+  "name": "photoshoot-picker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "摄影选片工作台：本机 IndexedDB 选片库 + 可分享的模特选片链接",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

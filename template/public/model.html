@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="zh-CN" data-skin="mecha-purple">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SELECTOR/01 · 选片</title>
+<script>try{var s=localStorage.getItem("pick.skin");if(s==="nerv")document.documentElement.setAttribute("data-skin","nerv")}catch(e){}</script>
+<style>
+:root{
+  --bg-canvas:#0B0817;--bg-surface:#141025;--bg-elevated:#1C1534;--bg-hover:#2B1B48;
+  --stroke:#40315B;--stroke-em:#6D3AA2;
+  --purple:#AE6BFF;--purple-deep:#7C2ED0;--purple-glow:#C78DFF;
+  --lime:#B7FF45;--lime-hover:#CBFF80;--lime-pressed:#94D42D;
+  --ok:#63E6AD;--warn:#F6CA61;--err:#FF6879;
+  --tx:#F7F3FF;--tx2:#B7AFCB;--tx3:#8F83AA;--inv:#0B0817;
+  --sh-purple:0 0 16px #AE6BFF40;--sh-lime:0 0 14px #B7FF4538;
+  --grid-tint:#AE6BFF0D;--fast:140ms;--normal:200ms;
+  --ov-lightbox:#080612F5;--ov-modal:#080612CC;--ov-chip:rgba(11,8,23,.78);--ov-lbbtn:rgba(28,21,52,.85);--ov-lbbar:rgba(20,16,37,.92);
+}
+/* ===== 皮肤 NERV：深酒红 CRT + 橙色指挥 HUD（规范：docs/NERV-界面设计规范.md） ===== */
+html[data-skin="nerv"]{
+  --bg-canvas:#0A0404;--bg-surface:#1A0508;--bg-elevated:#120003;--bg-hover:#26100C;
+  --stroke:rgba(255,107,26,.28);--stroke-em:rgba(255,107,26,.65);
+  --purple:#FF6B1A;--purple-deep:#3A1206;--purple-glow:#FFB070;
+  --amber:#FFD33D;
+  --lime:#8DFF2D;--lime-hover:#A8FF5C;--lime-pressed:#6FD61C;
+  --ok:#8DFF2D;--warn:#FFD33D;--err:#FF4D4F;
+  --tx:#FFE4C5;--tx2:#C46D38;--tx3:#8A4A28;--inv:#1A0404;
+  --sh-purple:0 0 6px rgba(255,107,26,.55);--sh-lime:0 0 6px rgba(141,255,45,.5);
+  --grid-tint:rgba(255,107,26,.04);
+  --ov-lightbox:rgba(5,1,1,.96);--ov-modal:rgba(5,1,1,.85);--ov-chip:rgba(10,4,4,.82);--ov-lbbtn:rgba(26,6,6,.88);--ov-lbbar:rgba(10,2,2,.94);
+}
+html[data-skin="nerv"] body{font-family:Consolas,"Courier New","Noto Sans SC","PingFang SC","Microsoft YaHei",monospace;background-size:40px 40px}
+/* CRT 扫描线：全局覆盖层，不挡交互 */
+html[data-skin="nerv"] body::after{content:"";position:fixed;inset:0;z-index:2147483000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,107,26,.045) 0 1px,transparent 1px 3px)}
+/* 直角规则 + 面板/弹窗四角 L 标记 */
+html[data-skin="nerv"] button,html[data-skin="nerv"] input,html[data-skin="nerv"] select,
+html[data-skin="nerv"] .panel,html[data-skin="nerv"] .modal,html[data-skin="nerv"] .tile,
+html[data-skin="nerv"] .badge,html[data-skin="nerv"] .seg,html[data-skin="nerv"] .seg button,
+html[data-skin="nerv"] .pick-row,html[data-skin="nerv"] .bottombar,
+html[data-skin="nerv"] .statsbar,html[data-skin="nerv"] .toolbar,
+html[data-skin="nerv"] #toast,html[data-skin="nerv"] #pList,html[data-skin="nerv"] #lbClose,
+html[data-skin="nerv"] .lb-nav,html[data-skin="nerv"] #session,html[data-skin="nerv"] input[type=text],html[data-skin="nerv"] select{border-radius:0}
+html[data-skin="nerv"] .panel,html[data-skin="nerv"] .modal{
+  clip-path:none;
+  background-image:
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple));
+  background-size:12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px;
+  background-position:0 0,0 0,100% 0,100% 0,0 100%,0 100%,100% 100%,100% 100%;
+  background-repeat:no-repeat;
+}
+/* 主操作：橙→琥珀渐变 + 深色文字 */
+html[data-skin="nerv"] .b-primary{background:linear-gradient(135deg,#FF6B1A,#FFD33D);color:var(--inv)}
+html[data-skin="nerv"] .b-primary:hover{background:linear-gradient(135deg,#FF7E33,#FFDD66)}
+html[data-skin="nerv"] .b-primary:active{background:linear-gradient(135deg,#E85A0F,#F0C22E)}
+html[data-skin="nerv"] .b-secondary{background:var(--bg-surface);border:1px solid var(--stroke-em)}
+html[data-skin="nerv"] .seg button.on{background:rgba(255,107,26,.18);color:var(--purple)}
+html[data-skin="nerv"] .switch input{accent-color:var(--purple)}
+/* 选中态：NERV 语义里"选中"走主色橙，绿色只留给成功/确认 */
+html[data-skin="nerv"] .tile.is-sel{border-color:var(--purple);box-shadow:var(--sh-purple)}
+html[data-skin="nerv"] .tile.is-sel .pick{background:var(--purple);color:var(--inv);border-color:var(--purple)}
+html[data-skin="nerv"] .tile.is-sel .tname{color:var(--purple)}
+html[data-skin="nerv"] #lbToggle.on{background:linear-gradient(135deg,#FF6B1A,#FFD33D);color:var(--inv);border-color:var(--amber)}
+html[data-skin="nerv"] .bignum,html[data-skin="nerv"] #pickedWrap .pk-head b,html[data-skin="nerv"] .bottombar .num{color:var(--purple)}
+html[data-skin="nerv"] button:focus-visible{outline-color:var(--purple)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg-canvas);color:var(--tx);font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55;min-height:100vh;background-image:linear-gradient(var(--grid-tint) 1px,transparent 1px),linear-gradient(90deg,var(--grid-tint) 1px,transparent 1px);background-size:24px 24px;padding-bottom:76px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+button:disabled{opacity:.45;cursor:default}
+input,select{font:inherit}
+.hud{font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--tx3);text-transform:uppercase}
+.mono{font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:20;background:var(--bg-surface);border-bottom:1px solid var(--stroke);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 0 var(--stroke-em)}
+.brand{min-width:0;flex:1}
+.brand h1{font-size:20px;font-weight:700;color:var(--purple);letter-spacing:.04em;overflow-wrap:anywhere}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:500;border:1px solid var(--stroke);color:var(--tx2);background:var(--bg-elevated)}
+.badge.confirmed{color:var(--lime);border-color:var(--lime);background:transparent}
+.badge.dirty{color:var(--warn);border-color:var(--warn);background:transparent}
+.status{font-size:13px;color:var(--tx2);min-height:18px}
+
+/* 面板（切角） */
+.panel{position:relative;background:var(--bg-surface);border:1px solid var(--stroke);border-radius:14px;padding:16px;margin:14px 16px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+@media(min-width:900px){.panel{clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);padding:20px 24px}}
+.panel::before{content:"";position:absolute;left:0;top:12px;width:2px;height:28px;background:var(--purple);opacity:.55}
+.hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.bignum{font-size:32px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--lime)}
+.hero .unit{font-size:13px;color:var(--tx2);margin-left:6px}
+.hero-side{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px}
+.hero-side label{font-size:13px;color:var(--tx2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],select{background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;color:var(--tx);padding:0 12px;height:40px;font-size:14px}
+input[type=text]:focus{outline:none;border:2px solid var(--purple);box-shadow:var(--sh-purple);padding:0 11px}
+.tip{font-size:12px;color:var(--tx3)}
+
+/* 按钮 */
+.b-primary{min-height:44px;padding:0 18px;background:var(--lime);color:var(--inv);font-weight:700;border-radius:10px;transition:background var(--fast) ease}
+.b-primary:hover{background:var(--lime-hover)}
+.b-primary:active{background:var(--lime-pressed)}
+.b-secondary{min-height:40px;padding:0 16px;background:var(--purple-deep);color:var(--tx);border-radius:10px}
+.b-outline{min-height:40px;padding:0 14px;background:transparent;border:1px solid var(--stroke-em);color:var(--tx);border-radius:10px}
+.b-outline:hover{border-color:var(--purple);box-shadow:var(--sh-purple)}
+.b-ghost{background:transparent;color:var(--tx2);min-height:36px;padding:0 10px}
+button:focus-visible{outline:2px solid var(--tx);outline-offset:3px}
+
+/* 工具栏：筛选 + 快速模式 + 分页 */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 16px;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--stroke);border-radius:10px}
+.seg{display:flex;gap:4px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:8px;padding:3px}
+.seg button{min-height:34px;padding:0 14px;background:transparent;color:var(--tx2);border-radius:6px;font-size:13px}
+.seg button.on{background:var(--purple-deep);color:var(--tx)}
+.switch{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--tx2);cursor:pointer;user-select:none}
+.switch input{accent-color:var(--lime);width:16px;height:16px;cursor:pointer}
+.pager{display:flex;gap:8px;align-items:center;margin-left:auto}
+.pager button{min-height:36px;padding:0 12px;background:var(--bg-elevated);border:1px solid var(--stroke);color:var(--tx)}
+.pager button:disabled{opacity:.35}
+.pager .info{font-variant-numeric:tabular-nums;font-weight:600}
+.pager[hidden]{display:none}
+
+/* 已选清单 */
+#pickedWrap[hidden]{display:none}
+#pickedWrap .pk-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+#pickedWrap .pk-head b{color:var(--lime)}
+#pkList{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
+.pick-row{display:flex;gap:10px;align-items:center;padding:6px 8px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;font-size:13px}
+.pick-row .no{min-width:26px;color:var(--tx3);font-variant-numeric:tabular-nums;text-align:right}
+.pick-row .nm{flex:1;word-break:break-all;color:var(--tx);font-family:ui-monospace,Consolas,monospace}
+.pick-row button{background:transparent;color:var(--err);padding:2px 8px;font-size:12px}
+.pk-actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+/* 照片网格 */
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:4px 16px 24px}
+@media(min-width:640px){.photo-grid{grid-template-columns:repeat(3,1fr);gap:12px}}
+@media(min-width:1100px){.photo-grid{grid-template-columns:repeat(4,1fr)}}
+.tile{position:relative;overflow:hidden;border:1px solid var(--stroke);border-radius:6px;background:var(--bg-elevated)}
+.tile img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;cursor:zoom-in;transition:opacity var(--fast) ease}
+.tile:hover img{opacity:.92}
+.tile.is-sel{border:2px solid var(--lime);box-shadow:var(--sh-lime)}
+.tile .pick{position:absolute;top:6px;right:6px;width:40px;height:40px;border-radius:8px;border:1px solid var(--stroke);background:var(--ov-chip);color:var(--tx2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tile.is-sel .pick{background:var(--lime);color:var(--inv);border-color:var(--lime);font-weight:700}
+.tile .zoom{position:absolute;top:6px;left:6px;width:40px;height:40px;border-radius:8px;border:1px solid var(--stroke);background:var(--ov-chip);color:var(--tx2);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:zoom-in;opacity:0;transition:opacity var(--fast) ease}
+.tile:hover .zoom{opacity:1}
+.tile .tname{padding:5px 8px;font-size:11px;color:var(--tx2);font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums;word-break:break-all;border-top:1px solid var(--stroke)}
+.tile.is-sel .tname{color:var(--lime)}
+.empty{padding:60px 20px;text-align:center;color:var(--tx3)}
+
+/* 固定底栏（手机） */
+.bottombar{position:fixed;bottom:0;left:0;right:0;z-index:25;background:var(--bg-surface);border-top:1px solid var(--stroke-em);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.4)}
+.bottombar .num{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--lime)}
+.bottombar .num small{font-size:12px;color:var(--tx2);font-weight:400;margin-left:4px}
+.bottombar .b-primary{min-width:140px}
+@media(max-width:639px){
+  .topbar{padding:10px 14px;gap:8px}
+  .hud{display:none}
+  .brand h1{font-size:17px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .status{width:100%;font-size:12px;min-height:0}
+  .panel{margin:10px 12px;padding:14px}
+  .toolbar{margin:10px 12px;padding:8px 10px;gap:8px}
+  .hero-actions{display:none}
+  .bottombar{padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+}
+@media(min-width:640px){.bottombar{display:none}body{padding-bottom:24px}}
+
+/* Lightbox：全屏 contain */
+#lightbox{position:fixed;inset:0;background:var(--ov-lightbox);z-index:50}
+#lightbox[hidden]{display:none}
+#lbImg{position:absolute;inset:0;margin:auto;max-width:100vw;max-height:calc(100vh - 150px);object-fit:contain}
+#lbLoad{position:absolute;inset:0 72px 120px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;color:var(--tx2);pointer-events:none}
+#lbLoad[hidden]{display:none}
+#lbRetry{pointer-events:auto}
+#lbToggle:disabled{opacity:.5;cursor:wait}
+#lbClose{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:10px;background:var(--ov-lbbtn);border:1px solid var(--stroke);color:var(--tx);font-size:17px;z-index:2}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:54px;height:54px;border-radius:50%;background:var(--ov-lbbtn);border:1px solid var(--stroke-em);color:var(--tx);font-size:24px;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:var(--sh-purple)}
+.lb-nav:hover{border-color:var(--purple)}
+#lbPrev{left:12px}
+#lbNext{right:12px}
+.lb-bottom{position:absolute;bottom:0;left:0;right:0;background:var(--ov-lbbar);border-top:1px solid var(--stroke);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center;z-index:2}
+.lb-info{display:flex;gap:12px;align-items:center;color:var(--tx2);font-size:13px}
+.lb-info .mono{color:var(--tx);max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lbToggle{width:100%;max-width:420px;min-height:48px;font-size:15px}
+#lbToggle.on{background:var(--lime);color:var(--inv)}
+@media(min-width:640px){#lbImg{max-height:calc(100vh - 140px)}}
+
+/* 确认 Modal */
+#panel{position:fixed;inset:0;background:var(--ov-modal);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#panel[hidden]{display:none}
+.modal{background:var(--bg-surface);border:1px solid var(--stroke-em);border-radius:14px;max-width:540px;width:100%;max-height:84vh;display:flex;flex-direction:column;padding:20px;box-shadow:var(--sh-purple)}
+.modal h2{font-size:20px;margin-bottom:4px}
+.modal .sub{font-size:13px;color:var(--tx2);margin-bottom:12px}
+#pList{flex:1;overflow:auto;border:1px solid var(--stroke);border-radius:8px;padding:6px;margin-bottom:14px;list-style:none;counter-reset:pitem;min-height:100px}
+#pList li{display:flex;gap:10px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--stroke);font-size:13px;counter-increment:pitem}
+#pList li::before{content:counter(pitem,decimal-leading-zero);min-width:30px;color:var(--tx3);font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+#pList li .nm{flex:1;word-break:break-all;font-family:ui-monospace,Consolas,monospace}
+#pList li button{background:transparent;color:var(--err);padding:2px 8px;font-size:12px}
+.p-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+/* Toast */
+#toast{position:fixed;top:64px;left:14px;right:14px;z-index:70;max-width:420px;margin:0 auto;padding:12px 16px;border-radius:10px;font-size:13px;background:var(--bg-elevated);border:1px solid var(--stroke-em);color:var(--tx);box-shadow:var(--sh-purple);opacity:0;transform:translateY(-6px);transition:opacity var(--normal) cubic-bezier(.2,.8,.2,1),transform var(--normal) cubic-bezier(.2,.8,.2,1);pointer-events:none;word-break:break-all;white-space:pre-line}
+#toast.show{opacity:1;transform:none}
+#toast.err{border-color:var(--err);color:var(--err)}
+#toast.ok{border-color:var(--lime);color:var(--lime)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="hud">PHOTO SELECT SYSTEM · UNIT-01</div>
+    <h1 id="sessionName">选片工作台</h1>
+  </div>
+  <span id="badge" class="badge">选片中</span>
+  <span id="status" class="status"></span>
+  <button id="skinBtn" class="b-ghost" title="切换界面皮肤" style="margin-left:auto">🎨 <span id="skinName">UNIT-01</span></button>
+</header>
+
+<section class="panel hero">
+  <div class="hero-num"><span id="count" class="bignum">0</span><span class="unit">已选 · 张</span></div>
+  <div class="hero-side">
+    <p class="tip" id="quickTip"></p>
+  </div>
+  <div class="hero-side hero-actions" style="flex:0 0 auto;flex-direction:row;gap:10px">
+    <button id="saveDraft" class="b-outline">暂存</button>
+    <button id="confirmBtn" class="b-primary">提交选片</button>
+  </div>
+</section>
+
+<div class="toolbar">
+  <div class="seg" role="group" aria-label="筛选">
+    <button data-f="all" class="on">全部</button>
+    <button data-f="picked">已选</button>
+    <button data-f="unpicked">未选</button>
+  </div>
+  <label class="switch"><input type="checkbox" id="quickMode" checked>⚡ 快速模式（点照片直接勾选）</label>
+  <div class="pager" style="margin-left:auto">
+    <span>每页</span>
+    <select id="pageSize"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select>
+    <button id="pgPrev" class="b-ghost">‹</button>
+    <span class="info" id="pgInfo">1 / 1</span>
+    <button id="pgNext" class="b-ghost">›</button>
+  </div>
+</div>
+
+<section id="pickedWrap" class="panel" hidden>
+  <div class="pk-head">
+    <b>已选清单 · <span id="pkCount">0</span> 张</b>
+    <button id="pkCopy" class="b-ghost">复制文件名</button>
+    <span class="tip">点 ✕ 可移除</span>
+  </div>
+  <div id="pkList"></div>
+  <div class="pk-actions"><button id="pkConfirm" class="b-primary">✓ 确认选片</button></div>
+</section>
+
+<main id="grid" class="photo-grid"><div class="empty">加载中…</div></main>
+
+<div class="pager bottom-pager">
+  <button id="pgPrev2" class="b-ghost">‹ 上一页</button>
+  <span class="info" id="pgInfo2">1 / 1</span>
+  <button id="pgNext2" class="b-ghost">下一页 ›</button>
+</div>
+
+<div class="bottombar">
+  <span class="num"><span id="bbCount">0</span><small>已选</small></span>
+  <div style="display:flex;gap:10px">
+    <button id="bbSave" class="b-outline">暂存</button>
+    <button id="bbSubmit" class="b-primary">提交选片</button>
+  </div>
+</div>
+
+<div id="lightbox" hidden>
+  <button id="lbClose" title="关闭 (Esc)">✕</button>
+  <img id="lbImg" alt="">
+  <div id="lbLoad" role="status" aria-live="polite" hidden>
+    <span id="lbLoadText">图片加载中…</span>
+    <button id="lbRetry" class="b-outline" hidden>重新加载</button>
+  </div>
+  <button id="lbPrev" class="lb-nav" title="上一张 (←)">‹</button>
+  <button id="lbNext" class="lb-nav" title="下一张 (→)">›</button>
+  <div class="lb-bottom">
+    <div class="lb-info"><span id="lbName" class="mono"></span><span id="lbIdx" class="mono"></span></div>
+    <button id="lbToggle" class="b-primary">✓ 选这张</button>
+  </div>
+</div>
+
+<div id="panel" hidden>
+  <div class="modal">
+    <h2>确认提交选片？</h2>
+    <p class="sub">共 <b id="pCount" class="mono">0</b> 张 · 提交后摄影师即可看到结果 · 可点 ✕ 移除</p>
+    <ol id="pList"></ol>
+    <div class="p-actions">
+      <button id="pCancel" class="b-outline">返回修改</button>
+      <button id="pFinal" class="b-primary">✓ 确认提交</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/model-api.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SESSION = decodeURIComponent((location.pathname.match(/^\/m\/([^/]+)/)||[])[1]||"");
+
+/* ===== 皮肤切换：mecha-purple（UNIT-01）↔ nerv，localStorage 全站记忆 ===== */
+const SKINS=[["mecha-purple","UNIT-01"],["nerv","NERV"]];
+function applySkin(s){
+  document.documentElement.setAttribute("data-skin",s);
+  try{localStorage.setItem("pick.skin",s)}catch(e){}
+  const el=$("#skinName");if(el)el.textContent=(SKINS.find(x=>x[0]===s)||SKINS[0])[1];
+}
+$("#skinBtn").onclick=()=>{
+  const cur=document.documentElement.getAttribute("data-skin")||"mecha-purple";
+  const next=SKINS[(SKINS.findIndex(x=>x[0]===cur)+1)%SKINS.length][0];
+  applySkin(next);setStatus("界面皮肤已切换："+(SKINS.find(x=>x[0]===next)[1]));
+};
+try{applySkin((function(){try{return localStorage.getItem("pick.skin")}catch(e){return null}})()||"mecha-purple")}catch(e){}
+const state = { photos: [], selected: new Set(), savedStatus: "draft", dirty: false, lbIdx: -1, page: 1, pageSize: 20, filter: "all", quick: localStorage.getItem("pick.quick") !== "0" };
+
+/* 显式携带 token：同浏览器里即使存有管理员 Cookie，也不会被误判 */
+const TOKEN = location.pathname.startsWith("/m/")
+  ? decodeURIComponent(location.pathname.slice(3)).replace(/\/+$/, "")
+  : (function(){ const m = document.cookie.match(new RegExp("(?:^|; )pick_t=([^;]*)")); return m ? decodeURIComponent(m[1]) : ""; })();
+const realAuth = p => p + (p.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN);
+const photoVersion=Date.now();
+const photoUrl=k=>"/api/shares/"+encodeURIComponent(TOKEN)+"/img/"+encodeURIComponent(base(k))+"?_v="+photoVersion;
+const base = k => k.split("/").pop();
+
+function setStatus(t){ $("#status").textContent=t }
+let toastTimer;
+function showToast(msg, err){
+  const t=$("#toast");
+  t.textContent=msg;t.className=err?"err":"ok";
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"), err?9000:4000);
+}
+function refreshBadge(){
+  const b=$("#badge");
+  if(state.dirty){b.textContent="未保存";b.className="badge dirty"}
+  else if(state.savedStatus==="confirmed"){b.textContent="已提交";b.className="badge confirmed"}
+  else{b.textContent="选片中";b.className="badge"}
+}
+function refreshCount(){
+  $("#count").textContent=state.selected.size;
+  $("#bbCount").textContent=state.selected.size;
+  renderPickedList();
+}
+function syncGrid(name){
+  const el=document.querySelector('.tile[data-name="'+CSS.escape(name)+'"]');
+  if(el){
+    el.classList.toggle("is-sel",state.selected.has(name));
+    const pick=el.querySelector(".pick");
+    if(pick){const sel=state.selected.has(name);pick.textContent=sel?"✓":"＋";pick.setAttribute("aria-label",(sel?"取消选择 ":"选择 ")+name)}
+  }
+}
+function toggle(name){
+  state.selected.has(name)?state.selected.delete(name):state.selected.add(name);
+  syncGrid(name);state.dirty=true;refreshBadge();refreshCount();
+  if(state.lbIdx>=0)syncLbToggle();
+}
+
+function filteredPhotos(){
+  if(state.filter==="picked")return state.photos.filter(k=>state.selected.has(base(k)));
+  if(state.filter==="unpicked")return state.photos.filter(k=>!state.selected.has(base(k)));
+  return state.photos;
+}
+function renderGrid(){
+  const f=filteredPhotos();
+  const tp=Math.max(1,Math.ceil(f.length/state.pageSize));
+  if(state.page>tp)state.page=tp;
+  const start=(state.page-1)*state.pageSize;
+  const slice=f.slice(start,start+state.pageSize);
+  $("#grid").innerHTML=slice.map(key=>{
+    const name=base(key);
+    const sel=state.selected.has(name);
+    return "<figure class='tile"+(sel?" is-sel":"")+"' data-name='"+name+"'>"+
+      "<img loading='lazy' src='"+photoUrl(key)+"' data-open='"+name+"' alt='"+name+"'>"+
+      "<button class='zoom' title='查看大图' data-zoom='"+name+"'>🔍</button>"+
+      "<button class='pick' data-pick='"+name+"' aria-label='"+(sel?"取消选择 ":"选择 ")+name+"'>"+(sel?"✓":"＋")+"</button>"+
+      "<figcaption class='tname'>"+name+"</figcaption></figure>";
+  }).join("")||"<div class='empty'>这个筛选条件下没有照片</div>";
+  document.querySelectorAll("#grid img[data-open]").forEach(img=>img.onclick=()=>{
+    const name=img.dataset.open;
+    if(state.quick)toggle(name);
+    else openLb(state.photos.findIndex(k=>base(k)===name));
+  });
+  document.querySelectorAll("#grid .pick").forEach(b=>b.onclick=e=>{e.stopPropagation();toggle(b.dataset.pick)});
+  document.querySelectorAll("#grid .zoom").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    openLb(state.photos.findIndex(k=>base(k)===b.dataset.zoom));
+  });
+  const info=state.page+" / "+tp;
+  $("#pgInfo").textContent=info;$("#pgInfo2").textContent=info;
+  $("#pgPrev").disabled=state.page<=1;$("#pgPrev2").disabled=state.page<=1;
+  $("#pgNext").disabled=state.page>=tp;$("#pgNext2").disabled=state.page>=tp;
+  $(".bottom-pager").hidden=state.photos.length===0;
+}
+
+async function init(){
+  const savedSize=Number(localStorage.getItem("pick.pageSize"));
+  if([20,50,100].includes(savedSize)){$("#pageSize").value=String(savedSize);state.pageSize=savedSize}
+  $("#quickMode").checked=state.quick;
+  updateQuickTip();
+  $("#quickMode").onchange=e=>{
+    state.quick=e.target.checked;
+    localStorage.setItem("pick.quick",state.quick?"1":"0");
+    updateQuickTip();
+  };
+  const r=await fetch(realAuth("/api/photos"));
+  if(r.status===403||r.status===404){document.body.innerHTML="<div class='empty'>链接无效或已过期，请联系摄影师重新获取。</div>";return}
+  state.photos=await r.json();
+  if(state.photos.length){
+    const sessionId=String(state.photos[0]).split("/")[0];
+    if(sessionId)$("#sessionName").textContent=sessionId;
+  }
+  state.page=1;
+  renderGrid();
+  await restoreSaved();
+  refreshCount();refreshBadge();
+  setStatus("共 "+state.photos.length+" 张 · 看中的打钩，选完提交");
+}
+function updateQuickTip(){
+  $("#quickTip").textContent=state.quick
+    ?"快速模式：点照片直接勾选 · 点 🔍 查看大图"
+    :"浏览模式：点照片查看大图 · 用 ＋ 按钮勾选";
+}
+
+async function restoreSaved(){
+  const r=await fetch(realAuth("/api/selection"));
+  const d=await r.json();
+  if(d.filenames&&d.filenames.length){
+    for(const n of d.filenames)state.selected.add(n);
+    state.savedStatus=d.status||"draft";
+    renderGrid();
+    setStatus("已恢复之前提交的 "+d.filenames.length+" 张");
+  }else{state.savedStatus="draft"}
+}
+
+/* 筛选 */
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  state.filter=b.dataset.f;state.page=1;renderGrid();
+});
+
+/* 分页 */
+$("#pgPrev").onclick=()=>{if(state.page>1){state.page--;renderGrid()}};
+$("#pgNext").onclick=()=>{if(state.page<Math.max(1,Math.ceil(filteredPhotos().length/state.pageSize))){state.page++;renderGrid()}};
+$("#pgPrev2").onclick=$("#pgPrev").onclick;
+$("#pgNext2").onclick=$("#pgNext").onclick;
+$("#pageSize").onchange=e=>{
+  state.pageSize=Number(e.target.value);
+  localStorage.setItem("pick.pageSize",state.pageSize);
+  state.page=1;renderGrid();
+};
+
+/* 放大预览：全屏 contain + 序号 + 文件名 + 独立选择 */
+let lbRequest=0,lbLoadTimer;
+const lbPreloads=new Map();
+function preloadLbNeighbors(){
+  const urls=new Set([-1,1].map(step=>{
+    const idx=(state.lbIdx+step+state.photos.length)%state.photos.length;
+    return photoUrl(state.photos[idx]);
+  }));
+  for(const url of lbPreloads.keys())if(!urls.has(url))lbPreloads.delete(url);
+  for(const url of urls)if(!lbPreloads.has(url)){
+    const img=new Image();img.decoding="async";img.fetchPriority="low";
+    lbPreloads.set(url,img);img.src=url;
+  }
+}
+function openLb(idx){
+  if(idx<0||idx>=state.photos.length)return;
+  state.lbIdx=idx;renderLb();$("#lightbox").hidden=false;
+}
+function renderLb(retry=false){
+  const key=state.photos[state.lbIdx];
+  if(!key)return;
+  const request=++lbRequest;
+  clearTimeout(lbLoadTimer);
+  const oldImg=$("#lbImg"),img=new Image();
+  // 每次切换使用独立图片，慢请求不能保留旧画面或覆盖后来的照片。
+  oldImg.onload=oldImg.onerror=null;oldImg.removeAttribute("src");
+  img.id="lbImg";img.alt=base(key);img.decoding="async";img.fetchPriority="high";
+  img.style.visibility="hidden";oldImg.replaceWith(img);
+  $("#lbName").textContent=base(key);
+  $("#lbIdx").textContent=(state.lbIdx+1)+" / "+state.photos.length;
+  $("#lbToggle").disabled=true;
+  $("#lightbox").setAttribute("aria-busy","true");
+  $("#lbLoad").hidden=false;$("#lbRetry").hidden=true;
+  $("#lbLoadText").textContent="图片加载中…";
+  syncLbToggle();
+  const fail=message=>{
+    if(request!==lbRequest)return;
+    clearTimeout(lbLoadTimer);
+    $("#lightbox").setAttribute("aria-busy","false");
+    $("#lbLoadText").textContent=message;$("#lbRetry").hidden=false;
+  };
+  img.onload=()=>{
+    if(request!==lbRequest)return;
+    clearTimeout(lbLoadTimer);
+    img.style.visibility="visible";$("#lbLoad").hidden=true;
+    $("#lightbox").setAttribute("aria-busy","false");
+    $("#lbToggle").disabled=false;
+    preloadLbNeighbors();
+  };
+  img.onerror=()=>fail("图片加载失败，请重新加载或查看下一张");
+  lbLoadTimer=setTimeout(()=>fail("图片加载较慢，请重新加载或查看下一张"),20000);
+  img.src=photoUrl(key)+(retry?"&_retry="+Date.now():"");
+}
+function syncLbToggle(){
+  const key=state.photos[state.lbIdx];if(!key)return;
+  const on=state.selected.has(base(key));
+  const b=$("#lbToggle");
+  b.textContent=on?"✓ 已选（点此取消）":"✓ 选这张";
+  b.classList.toggle("on",on);
+}
+$("#lbPrev").onclick=()=>{state.lbIdx=(state.lbIdx-1+state.photos.length)%state.photos.length;renderLb()};
+$("#lbNext").onclick=()=>{state.lbIdx=(state.lbIdx+1)%state.photos.length;renderLb()};
+$("#lbClose").onclick=()=>{++lbRequest;clearTimeout(lbLoadTimer);lbPreloads.clear();$("#lightbox").hidden=true;state.lbIdx=-1};
+$("#lbRetry").onclick=()=>renderLb(true);
+$("#lbToggle").onclick=()=>{const key=state.photos[state.lbIdx];toggle(base(key))};
+document.addEventListener("keydown",e=>{
+  if($("#lightbox").hidden)return;
+  if(e.key==="ArrowLeft")$("#lbPrev").click();
+  else if(e.key==="ArrowRight")$("#lbNext").click();
+  else if(e.key===" "){e.preventDefault();$("#lbToggle").click()}
+  else if(e.key==="Escape")$("#lbClose").click();
+});
+
+/* 已选清单 */
+function renderPickedList(){
+  const n=state.selected.size;
+  $("#pickedWrap").hidden=n===0;
+  $("#pkCount").textContent=n;
+  const list=[...state.selected].sort();
+  $("#pkList").innerHTML=list.map((name,i)=>"<div class='pick-row'><span class='no'>"+String(i+1).padStart(2,"0")+"</span><span class='nm'>"+esc(name)+"</span><button data-un='"+esc(name)+"'>✕</button></div>").join("");
+  $("#pkList").querySelectorAll("button").forEach(b=>b.onclick=()=>toggle(b.dataset.un));
+}
+$("#pkCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText([...state.selected].sort().join("\n"));showToast("文件名清单已复制（"+state.selected.size+" 个）")}
+  catch{showToast("复制失败，请在提交面板里复制",true)}
+};
+$("#pkConfirm").onclick=()=>$("#confirmBtn").click();
+
+/* 保存：超时 + 异常保护，网络失败不丢勾选 */
+async function persist(status){
+  try{
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch(realAuth("/api/selection"),{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({filenames:[...state.selected],status}),signal:ctrl.signal});
+    clearTimeout(timer);
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      state.dirty=false;state.savedStatus=d.status;refreshBadge();renderPickedList();
+      return true;
+    }
+    showToast(d.error||("保存失败（HTTP "+r.status+"）"),true);return false;
+  }catch(err){
+    showToast("网络异常，保存未完成——你的勾选都还在，请重试",true);return false;
+  }
+}
+$("#saveDraft").onclick=async()=>{
+  const b=$("#saveDraft");b.disabled=true;
+  const ok=await persist("draft");
+  b.disabled=false;
+  if(ok)showToast("已暂存 "+state.selected.size+" 张，还未最终提交");
+};
+$("#confirmBtn").onclick=()=>$("#bbSubmit").click();
+$("#bbSave").onclick=async()=>{
+  const b=$("#bbSave");b.disabled=true;
+  const ok=await persist("draft");
+  b.disabled=false;
+  if(ok)showToast("已暂存 "+state.selected.size+" 张，还未最终提交");
+};
+$("#bbSubmit").onclick=()=>{
+  if(!state.selected.size)return showToast("先勾选照片再提交",true);
+  $("#pCount").textContent=state.selected.size;
+  renderPanelList();
+  $("#panel").hidden=false;
+};
+function renderPanelList(){
+  const list=[...state.selected].sort();
+  $("#pList").innerHTML=list.map(n=>"<li><span class='nm'>"+n+"</span><button data-n='"+n+"'>✕</button></li>").join("");
+  $("#pList").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    state.selected.delete(b.dataset.n);syncGrid(b.dataset.n);
+    state.dirty=true;refreshBadge();refreshCount();
+    $("#pCount").textContent=state.selected.size;
+    renderPanelList();
+  });
+}
+$("#pCancel").onclick=()=>{$("#panel").hidden=true};
+$("#pFinal").onclick=async()=>{
+  const b=$("#pFinal");b.disabled=true;b.textContent="提交中…";
+  const ok=await persist("confirmed");
+  b.disabled=false;b.textContent="✓ 确认提交";
+  if(ok){
+    $("#panel").hidden=true;
+    showToast("✓ 选片已提交（共 "+state.selected.size+" 张），摄影师会收到你的结果");
+    setStatus("✓ 已提交 "+state.selected.size+" 张");
+  }
+};
+
+init();
+</script>
+</body>
+</html>

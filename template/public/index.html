@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="zh-CN" data-skin="mecha-purple">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ALBUM CONTROL · 选片控制台</title>
+<script>try{var s=localStorage.getItem("pick.skin");if(s==="nerv")document.documentElement.setAttribute("data-skin","nerv")}catch(e){}</script>
+<style>
+:root{
+  --bg-canvas:#0B0817;--bg-surface:#141025;--bg-elevated:#1C1534;--bg-hover:#2B1B48;
+  --stroke:#40315B;--stroke-em:#6D3AA2;
+  --purple:#AE6BFF;--purple-deep:#7C2ED0;--purple-glow:#C78DFF;
+  --lime:#B7FF45;--lime-hover:#CBFF80;--lime-pressed:#94D42D;
+  --ok:#63E6AD;--warn:#F6CA61;--err:#FF6879;
+  --tx:#F7F3FF;--tx2:#B7AFCB;--tx3:#8F83AA;--inv:#0B0817;
+  --sh-purple:0 0 16px #AE6BFF40;--sh-lime:0 0 14px #B7FF4538;
+  --grid-tint:#AE6BFF0D;--fast:140ms;--normal:200ms;
+  --ov-lightbox:#080612F5;--ov-modal:#080612CC;--ov-chip:rgba(11,8,23,.78);--ov-lbbtn:rgba(28,21,52,.85);--ov-lbbar:rgba(20,16,37,.92);
+}
+/* ===== 皮肤 NERV：深酒红 CRT + 橙色指挥 HUD（规范：docs/NERV-界面设计规范.md） ===== */
+html[data-skin="nerv"]{
+  --bg-canvas:#0A0404;--bg-surface:#1A0508;--bg-elevated:#120003;--bg-hover:#26100C;
+  --stroke:rgba(255,107,26,.28);--stroke-em:rgba(255,107,26,.65);
+  --purple:#FF6B1A;--purple-deep:#3A1206;--purple-glow:#FFB070;
+  --amber:#FFD33D;
+  --lime:#8DFF2D;--lime-hover:#A8FF5C;--lime-pressed:#6FD61C;
+  --ok:#8DFF2D;--warn:#FFD33D;--err:#FF4D4F;
+  --tx:#FFE4C5;--tx2:#C46D38;--tx3:#8A4A28;--inv:#1A0404;
+  --sh-purple:0 0 6px rgba(255,107,26,.55);--sh-lime:0 0 6px rgba(141,255,45,.5);
+  --grid-tint:rgba(255,107,26,.04);
+  --ov-lightbox:rgba(5,1,1,.96);--ov-modal:rgba(5,1,1,.85);--ov-chip:rgba(10,4,4,.82);--ov-lbbtn:rgba(26,6,6,.88);--ov-lbbar:rgba(10,2,2,.94);
+}
+html[data-skin="nerv"] body{font-family:Consolas,"Courier New","Noto Sans SC","PingFang SC","Microsoft YaHei",monospace;background-size:40px 40px}
+/* CRT 扫描线：全局覆盖层，不挡交互 */
+html[data-skin="nerv"] body::after{content:"";position:fixed;inset:0;z-index:2147483000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,107,26,.045) 0 1px,transparent 1px 3px)}
+/* 直角规则 + 面板/弹窗四角 L 标记 */
+html[data-skin="nerv"] button,html[data-skin="nerv"] input,html[data-skin="nerv"] select,
+html[data-skin="nerv"] .panel,html[data-skin="nerv"] .modal,html[data-skin="nerv"] .tile,
+html[data-skin="nerv"] .badge,html[data-skin="nerv"] .seg,html[data-skin="nerv"] .seg button,
+html[data-skin="nerv"] .pick-row,html[data-skin="nerv"] .share-new,html[data-skin="nerv"] #shList .share-row,
+html[data-skin="nerv"] .res-row,html[data-skin="nerv"] .statsbar,html[data-skin="nerv"] .toolbar,
+html[data-skin="nerv"] #toast,html[data-skin="nerv"] #pList,html[data-skin="nerv"] #lbClose,
+html[data-skin="nerv"] .lb-nav,html[data-skin="nerv"] #session,html[data-skin="nerv"] input[type=text],html[data-skin="nerv"] select{border-radius:0}
+html[data-skin="nerv"] .panel,html[data-skin="nerv"] .modal{
+  clip-path:none;
+  background-image:
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple)),
+    linear-gradient(var(--purple),var(--purple)),linear-gradient(var(--purple),var(--purple));
+  background-size:12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px;
+  background-position:0 0,0 0,100% 0,100% 0,0 100%,0 100%,100% 100%,100% 100%;
+  background-repeat:no-repeat;
+}
+/* 主操作：橙→琥珀渐变 + 深色文字 */
+html[data-skin="nerv"] .b-primary{background:linear-gradient(135deg,#FF6B1A,#FFD33D);color:var(--inv)}
+html[data-skin="nerv"] .b-primary:hover{background:linear-gradient(135deg,#FF7E33,#FFDD66)}
+html[data-skin="nerv"] .b-primary:active{background:linear-gradient(135deg,#E85A0F,#F0C22E)}
+html[data-skin="nerv"] .b-secondary{background:var(--bg-surface);border:1px solid var(--stroke-em)}
+html[data-skin="nerv"] .seg button.on{background:rgba(255,107,26,.18);color:var(--purple)}
+html[data-skin="nerv"] .switch input{accent-color:var(--purple)}
+html[data-skin="nerv"] .b-danger{background:rgba(255,77,79,.14);border:1px solid var(--err);color:var(--err)}
+/* 选中态：NERV 语义里"选中"走主色橙，绿色只留给成功/确认 */
+html[data-skin="nerv"] .tile.is-sel{border-color:var(--purple);box-shadow:var(--sh-purple)}
+html[data-skin="nerv"] .tile.is-sel .pick{background:var(--purple);color:var(--inv);border-color:var(--purple)}
+html[data-skin="nerv"] .tile.is-sel .tname{color:var(--purple)}
+html[data-skin="nerv"] #lbToggle.on{background:linear-gradient(135deg,#FF6B1A,#FFD33D);color:var(--inv)}
+html[data-skin="nerv"] .bignum,html[data-skin="nerv"] .pk-head b,html[data-skin="nerv"] #pickedWrap .pk-head b,html[data-skin="nerv"] .bottombar .num{color:var(--purple)}
+html[data-skin="nerv"] .st-track{border:1px solid var(--stroke);background:var(--bg-canvas)}
+html[data-skin="nerv"] button:focus-visible{outline-color:var(--purple)}
+html[data-skin="nerv"] #lbToggle.on{border-color:var(--amber)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg-canvas);color:var(--tx);font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55;min-height:100vh;background-image:linear-gradient(var(--grid-tint) 1px,transparent 1px),linear-gradient(90deg,var(--grid-tint) 1px,transparent 1px);background-size:24px 24px;padding-bottom:24px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+button:disabled{opacity:.45;cursor:default}
+input,select{font:inherit}
+.hud{font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--tx3);text-transform:uppercase}
+.mono{font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+
+.topbar{position:sticky;top:0;z-index:20;background:var(--bg-surface);border-bottom:1px solid var(--stroke);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 0 var(--stroke-em)}
+.brand{min-width:0}
+.brand h1{font-size:20px;font-weight:700;color:var(--purple);letter-spacing:.04em}
+#session{flex:1;min-width:200px;max-width:320px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;color:var(--tx);padding:0 12px;height:40px;font-size:14px}
+#session:focus{outline:none;border:2px solid var(--purple);box-shadow:var(--sh-purple);height:38px}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:500;border:1px solid var(--stroke);color:var(--tx2);background:var(--bg-elevated)}
+.badge.confirmed{color:var(--lime);border-color:var(--lime);background:transparent}
+.badge.dirty{color:var(--warn);border-color:var(--warn);background:transparent}
+.status{font-size:13px;color:var(--tx2);min-height:18px;width:100%}
+@media(min-width:900px){.status{width:auto;min-width:200px}}
+
+.panel{position:relative;background:var(--bg-surface);border:1px solid var(--stroke);border-radius:14px;padding:16px;margin:14px 16px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+@media(min-width:900px){.panel{clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);padding:20px 24px}}
+.panel::before{content:"";position:absolute;left:0;top:12px;width:2px;height:28px;background:var(--purple);opacity:.55}
+.hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.bignum{font-size:32px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--lime)}
+.hero .unit{font-size:13px;color:var(--tx2);margin-left:6px}
+.hero-side{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=text],select{background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;color:var(--tx);padding:0 12px;height:40px;font-size:14px}
+input[type=text]:focus,select:focus{outline:none;border:2px solid var(--purple);box-shadow:var(--sh-purple)}
+.tip{font-size:12px;color:var(--tx3)}
+
+.b-primary{min-height:44px;padding:0 18px;background:var(--lime);color:var(--inv);font-weight:700;border-radius:10px;transition:background var(--fast) ease}
+.b-primary:hover{background:var(--lime-hover)}
+.b-primary:active{background:var(--lime-pressed)}
+.b-secondary{min-height:40px;padding:0 16px;background:var(--purple-deep);color:var(--tx);border-radius:10px}
+.b-secondary:hover{box-shadow:var(--sh-purple)}
+.b-outline{min-height:40px;padding:0 14px;background:transparent;border:1px solid var(--stroke-em);color:var(--tx);border-radius:10px}
+.b-outline:hover{border-color:var(--purple);box-shadow:var(--sh-purple)}
+.b-ghost{background:transparent;color:var(--tx2);min-height:36px;padding:0 10px}
+.b-danger{min-height:40px;padding:0 14px;background:transparent;border:1px solid var(--err);color:var(--err);border-radius:10px;transition:background var(--fast) ease}
+.b-danger:hover{background:rgba(255,104,121,.12)}
+button:focus-visible{outline:2px solid var(--tx);outline-offset:3px}
+
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 16px;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--stroke);border-radius:10px}
+.seg{display:flex;gap:4px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:8px;padding:3px}
+.seg button{min-height:34px;padding:0 14px;background:transparent;color:var(--tx2);border-radius:6px;font-size:13px}
+.seg button.on{background:var(--purple-deep);color:var(--tx)}
+.switch{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--tx2);cursor:pointer;user-select:none}
+.switch input{accent-color:var(--lime);width:16px;height:16px;cursor:pointer}
+.pager{display:flex;gap:8px;align-items:center;margin-left:auto}
+.pager button{min-height:36px;padding:0 12px;background:var(--bg-elevated);border:1px solid var(--stroke);color:var(--tx)}
+.pager button:disabled{opacity:.35}
+.pager .info{font-variant-numeric:tabular-nums;font-weight:600}
+.pager[hidden]{display:none}
+
+.dropzone{border:1px dashed var(--stroke-em);border-radius:10px;margin:14px 16px;padding:24px;text-align:center;color:var(--tx2);font-size:13px;cursor:pointer;position:relative;transition:border-color var(--fast) ease,background var(--fast) ease}
+.dropzone::before{content:"";position:absolute;left:8px;top:8px;width:14px;height:14px;border-left:2px solid var(--purple);border-top:2px solid var(--purple);opacity:.6}
+.dropzone::after{content:"";position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-right:2px solid var(--purple);border-bottom:2px solid var(--purple);opacity:.6}
+.dropzone:hover{border-color:var(--purple);color:var(--tx);background:var(--bg-hover)}
+.dropzone.over{border-color:var(--lime);background:var(--bg-hover);box-shadow:var(--sh-lime)}
+
+#shareBar[hidden]{display:none}
+#pickedWrap[hidden]{display:none}
+.pk-head,.sb-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.pk-head b,.sb-head b{color:var(--lime)}
+#pkList{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
+.pick-row{display:flex;gap:10px;align-items:center;padding:6px 8px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;font-size:13px}
+.pick-row .no{min-width:26px;color:var(--tx3);font-variant-numeric:tabular-nums;text-align:right}
+.pick-row .nm{flex:1;word-break:break-all;color:var(--tx);font-family:ui-monospace,Consolas,monospace}
+.pick-row button{background:transparent;color:var(--err);padding:2px 8px;font-size:12px}
+.pk-actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+.share-new{background:var(--bg-hover);border:1px solid var(--stroke-em);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;word-break:break-all}
+.share-new a{color:var(--lime);word-break:break-all}
+#shList{display:flex;flex-direction:column;gap:6px}
+#shList .share-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:8px;padding:8px 10px;font-size:13px}
+#shList .share-row a{color:var(--purple-glow);word-break:break-all;flex:1;min-width:200px;font-family:ui-monospace,Consolas,monospace}
+#shList .share-row .when{color:var(--tx3);font-size:12px;font-variant-numeric:tabular-nums}
+#shList .share-row b{color:var(--tx)}
+
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:4px 16px 24px}
+@media(min-width:640px){.photo-grid{grid-template-columns:repeat(3,1fr);gap:12px}}
+@media(min-width:900px){.photo-grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1400px){.photo-grid{grid-template-columns:repeat(5,1fr)}}
+.tile{position:relative;overflow:hidden;border:1px solid var(--stroke);border-radius:6px;background:var(--bg-elevated)}
+.tile img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;cursor:zoom-in;transition:opacity var(--fast) ease}
+.tile:hover img{opacity:.92}
+.tile.is-sel{border:2px solid var(--lime);box-shadow:var(--sh-lime)}
+.tile .pick{position:absolute;top:6px;right:6px;width:40px;height:40px;border-radius:8px;border:1px solid var(--stroke);background:var(--ov-chip);color:var(--tx2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tile.is-sel .pick{background:var(--lime);color:var(--inv);border-color:var(--lime);font-weight:700}
+.tile .zoom{position:absolute;top:6px;left:6px;width:40px;height:40px;border-radius:8px;border:1px solid var(--stroke);background:var(--ov-chip);color:var(--tx2);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:zoom-in;opacity:0;transition:opacity var(--fast) ease}
+.tile:hover .zoom{opacity:1}
+.tile .tname{padding:5px 8px;font-size:11px;color:var(--tx2);font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums;word-break:break-all;border-top:1px solid var(--stroke)}
+.tile.is-sel .tname{color:var(--lime)}
+.empty{padding:60px 20px;text-align:center;color:var(--tx3)}
+
+#lightbox{position:fixed;inset:0;background:var(--ov-lightbox);z-index:50}
+#lightbox[hidden]{display:none}
+#lbImg{position:absolute;inset:0;margin:auto;max-width:100vw;max-height:calc(100vh - 150px);object-fit:contain}
+#lbLoad{position:absolute;inset:0 72px 120px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;color:var(--tx2);pointer-events:none}
+#lbLoad[hidden]{display:none}
+#lbRetry{pointer-events:auto}
+#lbToggle:disabled{opacity:.5;cursor:wait}
+#lbClose{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:10px;background:var(--ov-lbbtn);border:1px solid var(--stroke);color:var(--tx);font-size:17px;z-index:2}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:54px;height:54px;border-radius:50%;background:var(--ov-lbbtn);border:1px solid var(--stroke-em);color:var(--tx);font-size:24px;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:var(--sh-purple)}
+.lb-nav:hover{border-color:var(--purple)}
+#lbPrev{left:12px}
+#lbNext{right:12px}
+.lb-bottom{position:absolute;bottom:0;left:0;right:0;background:var(--ov-lbbar);border-top:1px solid var(--stroke);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center;z-index:2}
+.lb-info{display:flex;gap:12px;align-items:center;color:var(--tx2);font-size:13px}
+.lb-info .mono{color:var(--tx);max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lbToggle{width:100%;max-width:420px;min-height:48px;font-size:15px}
+#lbToggle.on{background:var(--lime);color:var(--inv)}
+@media(min-width:640px){#lbImg{max-height:calc(100vh - 140px)}}
+
+#panel{position:fixed;inset:0;background:var(--ov-modal);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#panel[hidden]{display:none}
+#resultPanel{position:fixed;inset:0;background:var(--ov-modal);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#resultPanel[hidden]{display:none}
+#delPanel{position:fixed;inset:0;background:var(--ov-modal);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#delPanel[hidden]{display:none}
+#duplicatePanel,#uploadReport{position:fixed;inset:0;background:var(--ov-modal);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px}
+#duplicatePanel[hidden],#uploadReport[hidden]{display:none}
+#duplicatePanel .modal,#uploadReport .modal{gap:12px}
+#duplicateNames,#uploadErrors{max-height:35vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--tx2);font-size:13px}
+.upload-actions{display:flex;gap:10px;flex-wrap:wrap}
+.modal{background:var(--bg-surface);border:1px solid var(--stroke-em);border-radius:14px;max-width:640px;width:100%;max-height:84vh;display:flex;flex-direction:column;padding:20px;box-shadow:var(--sh-purple)}
+.modal h2{font-size:20px;margin-bottom:4px}
+.modal .sub{font-size:13px;color:var(--tx2);margin-bottom:12px}
+.result-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.result-heading h2{margin:0}
+.result-heading button:disabled{opacity:.45;cursor:not-allowed}
+.result-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.folder-field{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--tx2);white-space:nowrap}
+.folder-field input{width:104px;height:36px;background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:6px;color:var(--tx);padding:0 8px;font-size:13px;font-family:ui-monospace,Consolas,monospace}
+.folder-field input:focus{outline:none;border:2px solid var(--purple);padding:0 7px}
+@media(max-width:639px){.result-tools{width:100%}.folder-field{flex:1}.folder-field input{flex:1;width:auto}}
+#pList{flex:1;overflow:auto;border:1px solid var(--stroke);border-radius:8px;padding:6px;margin-bottom:14px;list-style:none;counter-reset:pitem;min-height:100px}
+#pList li{display:flex;gap:10px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--stroke);font-size:13px;counter-increment:pitem}
+#pList li::before{content:counter(pitem,decimal-leading-zero);min-width:30px;color:var(--tx3);font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+#pList li .nm{flex:1;word-break:break-all;font-family:ui-monospace,Consolas,monospace}
+#pList li button{background:transparent;color:var(--err);padding:2px 8px;font-size:12px}
+.p-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#rList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.res-row{background:var(--bg-elevated);border:1px solid var(--stroke);border-radius:8px;padding:10px 12px;font-size:13px}
+.res-row .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.res-row .head b{color:var(--tx)}
+.res-row .st{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--stroke);color:var(--tx2)}
+.res-row .st.confirmed{color:var(--lime);border-color:var(--lime)}
+.res-row .when{color:var(--tx3);font-size:12px;font-variant-numeric:tabular-nums}
+.res-row details{margin-top:6px}
+.res-row summary{cursor:pointer;color:var(--purple);font-size:12px}
+.res-row details .fns{font-size:12px;color:var(--tx2);padding:6px 0;word-break:break-all;font-family:ui-monospace,Consolas,monospace}
+
+.statsbar{display:flex;gap:12px;align-items:flex-start;margin:0 16px 10px;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--stroke);border-radius:10px;font-size:13px;color:var(--tx2)}
+.statsbar .hud{flex:0 0 auto}
+.stats-content{flex:1;min-width:0}
+.stats-databases{display:grid;gap:8px;margin-top:8px}
+.stats-db{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stats-db-name{min-width:70px;color:var(--tx)}
+.stats-db-value{font-size:12px;font-variant-numeric:tabular-nums}
+.stats-note{font-size:12px;color:var(--tx3);margin-top:6px}
+.st-track{flex:1;min-width:120px;height:6px;background:var(--stroke);border-radius:3px;overflow:hidden}
+.st-fill{height:100%;background:var(--purple);width:0;transition:width var(--normal) ease}
+#toast{position:fixed;top:64px;left:14px;right:14px;z-index:70;max-width:460px;margin:0 auto;padding:12px 16px;border-radius:10px;font-size:13px;background:var(--bg-elevated);border:1px solid var(--stroke-em);color:var(--tx);box-shadow:var(--sh-purple);opacity:0;transform:translateY(-6px);transition:opacity var(--normal) cubic-bezier(.2,.8,.2,1),transform var(--normal) cubic-bezier(.2,.8,.2,1);pointer-events:none;word-break:break-all;white-space:pre-line}
+#toast.show{opacity:1;transform:none}
+#toast.err{border-color:var(--err);color:var(--err)}
+#toast.ok{border-color:var(--lime);color:var(--lime)}
+
+/* ===== 右上角实时通知：模特提交选片后弹出 ===== */
+#notifyStack{position:fixed;top:76px;right:16px;z-index:65;display:flex;flex-direction:column;gap:10px;width:min(360px,calc(100vw - 24px));pointer-events:none}
+.notify-card{position:relative;pointer-events:auto;background:var(--bg-elevated);border:1px solid var(--stroke-em);border-left:3px solid var(--lime);border-radius:10px;padding:11px 34px 11px 13px;box-shadow:var(--sh-lime);cursor:pointer;animation:notifyIn var(--normal) cubic-bezier(.2,.8,.2,1)}
+.notify-card:hover{border-color:var(--lime)}
+.notify-card:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+@keyframes notifyIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.notify-card .nt-head{display:flex;gap:6px;align-items:center;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--lime)}
+.notify-card .nt-title{font-size:14px;color:var(--tx);margin:4px 0 2px;line-height:1.4;word-break:break-all}
+.notify-card .nt-meta{font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.notify-card .nt-close{position:absolute;top:7px;right:7px;width:26px;height:26px;min-height:0;padding:0;background:transparent;color:var(--tx3);font-size:12px;line-height:1;border-radius:6px}
+.notify-card .nt-close:hover{color:var(--err);background:var(--bg-hover)}
+@media(max-width:639px){
+  .topbar{padding:10px 14px;gap:8px}
+  .hud{display:none}
+  .brand h1{font-size:16px}
+  #session{order:3;width:100%;max-width:none;min-width:0}
+  .status{width:100%;font-size:12px;min-height:0}
+  .panel{margin:10px 12px;padding:14px}
+  .toolbar{margin:10px 12px;padding:8px 10px;gap:8px}
+  .dropzone{margin:10px 12px;padding:18px}
+  .hero-side{gap:8px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body class="auth-locked">
+<header class="topbar">
+  <div class="brand">
+    <div class="hud">ALBUM CONTROL · UNIT-01</div>
+    <h1>选片控制台</h1>
+  </div>
+  <button type="button" id="passwordBtn" class="b-ghost">修改密码</button>
+  <button type="button" id="logoutBtn" class="b-ghost" title="退出管理员登录">退出</button>
+  <input id="session" list="sessionList" placeholder="输入新场次名，或选择已有场次" autocomplete="off">
+  <datalist id="sessionList"></datalist>
+  <span id="badge" class="badge">选片中</span>
+  <span id="status" class="status"></span>
+  <button id="skinBtn" class="b-ghost" title="切换界面皮肤" style="margin-left:auto">🎨 <span id="skinName">UNIT-01</span></button>
+</header>
+
+<section class="panel hero">
+  <div class="hero-num"><span id="count" class="bignum">0</span><span class="unit">已选 · 张</span></div>
+  <div class="hero-side">
+    <button id="shareBtn" class="b-secondary">🔗 模特链接</button>
+    <button id="resultBtn" class="b-outline">📋 选片结果</button>
+    <button id="saveDraft" class="b-outline">暂存</button>
+    <button id="confirmBtn" class="b-primary">✓ 确认选片</button>
+    <button id="clear" class="b-ghost">清空</button>
+    <button id="delBtn" class="b-danger">🗑 删除场次</button>
+  </div>
+</section>
+
+<div class="statsbar">
+  <span class="hud">STORAGE</span>
+  <div class="stats-content">
+    <div id="stText" class="mono">正在读取存储统计…</div>
+    <div id="stDatabases" class="stats-databases"></div>
+    <div id="stNote" class="stats-note"></div>
+  </div>
+  <button id="stRefresh" class="b-ghost" title="刷新">↻</button>
+</div>
+
+<section id="shareBar" class="panel" hidden>
+  <div class="sb-head">
+    <b>场次「<span id="shSession"></span>」的模特链接</b>
+    <label class="switch" style="margin-left:auto"><input type="checkbox" id="shPermanent">永久有效（默认 30 天）</label>
+    <button id="shGen" class="b-secondary">＋ 生成新链接</button>
+  </div>
+  <p class="tip" style="margin-bottom:10px">模特打开链接只看到这一场的照片，无法上传，与其他场次互相隔离。复制链接发给模特即可。链接快照保存在服务器，服务重启后可能失效，重新生成即可。</p>
+  <div id="shNew" class="share-new" hidden></div>
+  <div id="shList"></div>
+</section>
+
+<section id="pickedWrap" class="panel" hidden>
+  <div class="pk-head">
+    <b>已选清单 · <span id="pkCount">0</span> 张</b>
+    <button id="pkCopy" class="b-ghost">复制文件名</button>
+    <span class="tip">点 ✕ 可移除</span>
+  </div>
+  <div id="pkList"></div>
+  <div class="pk-actions"><button id="pkConfirm" class="b-primary">✓ 确认选片</button></div>
+</section>
+
+<div class="toolbar">
+  <div class="seg" role="group" aria-label="筛选">
+    <button data-f="all" class="on">全部</button>
+    <button data-f="picked">已选</button>
+    <button data-f="unpicked">未选</button>
+  </div>
+  <label class="switch"><input type="checkbox" id="quickMode" checked>⚡ 快速模式（点照片直接勾选）</label>
+  <div class="pager" id="pager" style="margin-left:auto">
+    <span>每页</span>
+    <select id="pageSize"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select>
+    <button id="pgPrev" class="b-ghost">‹</button>
+    <span class="info" id="pgInfo">1 / 1</span>
+    <button id="pgNext" class="b-ghost">›</button>
+  </div>
+</div>
+
+<div id="drop" class="dropzone">把 JPG 拖到这里，或点击选择文件 · 自动压缩为长边 1600px 预览图 · 同场次同名图片可选择跳过或覆盖</div>
+<input id="fileInput" type="file" multiple accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+<main id="grid" class="photo-grid"><div class="empty">输入场次名后上传照片</div></main>
+
+<div class="pager bottom-pager" hidden>
+  <button id="pgPrev2" class="b-ghost">‹ 上一页</button>
+  <span class="info" id="pgInfo2">1 / 1</span>
+  <button id="pgNext2" class="b-ghost">下一页 ›</button>
+</div>
+
+<div id="lightbox" hidden>
+  <button id="lbClose" title="关闭 (Esc)">✕</button>
+  <img id="lbImg" alt="">
+  <div id="lbLoad" role="status" aria-live="polite" hidden>
+    <span id="lbLoadText">图片加载中…</span>
+    <button id="lbRetry" class="b-outline" hidden>重新加载</button>
+  </div>
+  <button id="lbPrev" class="lb-nav" title="上一张 (←)">‹</button>
+  <button id="lbNext" class="lb-nav" title="下一张 (→)">›</button>
+  <div class="lb-bottom">
+    <div class="lb-info"><span id="lbName" class="mono"></span><span id="lbIdx" class="mono"></span></div>
+    <button id="lbToggle" class="b-primary">✓ 选这张</button>
+  </div>
+</div>
+
+<div id="duplicatePanel" role="dialog" aria-modal="true" aria-labelledby="duplicateTitle" hidden>
+  <div class="modal">
+    <h2 id="duplicateTitle">发现同名照片</h2>
+    <p id="duplicateSummary" class="sub"></p>
+    <div id="duplicateNames"></div>
+    <p class="sub">选择覆盖会替换当前场次已有的同名照片；本次文件中重复的名称只上传一次。</p>
+    <div class="upload-actions">
+      <button id="duplicateSkip" class="b-primary">跳过同名照片</button>
+      <button id="duplicateOverwrite" class="b-outline">覆盖同名照片</button>
+      <button id="duplicateCancel" class="b-ghost">取消上传</button>
+    </div>
+  </div>
+</div>
+<div id="uploadReport" role="dialog" aria-modal="true" aria-labelledby="uploadReportTitle" hidden>
+  <div class="modal">
+    <h2 id="uploadReportTitle">部分照片未上传</h2>
+    <p id="uploadReportSummary" class="sub"></p>
+    <div id="uploadErrors"></div>
+    <div class="upload-actions"><button id="uploadReportClose" class="b-primary">知道了</button></div>
+  </div>
+</div>
+<div id="panel" hidden>
+  <div class="modal">
+    <h2>确认提交选片？</h2>
+    <p class="sub">共 <b id="pCount" class="mono">0</b> 张 · 可点 ✕ 移除</p>
+    <ol id="pList"></ol>
+    <div class="p-actions">
+      <button id="pCancel" class="b-outline">返回修改</button>
+      <button id="pFinal" class="b-primary">✓ 确认提交</button>
+    </div>
+  </div>
+</div>
+
+<div id="resultPanel" hidden>
+  <div class="modal">
+    <div class="result-heading">
+      <h2>📋 选片结果</h2>
+      <div class="result-tools">
+        <label class="folder-field">未选归入<input id="aiFolder" type="text" value="00-未选" maxlength="40" spellcheck="false" autocomplete="off"></label>
+        <button id="copyAiPrompt" class="b-secondary" type="button" disabled>✨ 复制 AI 提示词</button>
+        <button id="copyAllResults" class="b-outline" type="button" disabled>复制全部文件名</button>
+      </div>
+    </div>
+    <p class="sub">场次「<b id="rSession"></b>」的全部选片记录 · 文件名去重后逐行复制 · AI 提示词会把没选中的原片归入上面的文件夹</p>
+    <div id="rList"></div>
+    <div class="p-actions"><button id="rClose" class="b-outline">关闭</button></div>
+  </div>
+</div>
+
+<div id="delPanel" hidden>
+  <div class="modal">
+    <h2>🗑 删除场次「<span id="dSession"></span>」</h2>
+    <p class="sub">将永久删除：<b id="dPhotos" class="mono">0</b> 张照片（<span id="dBytes" class="mono">0</span>）· 选片记录 <b id="dSel" class="mono">0</b> 条 · 模特链接 <b id="dShares" class="mono">0</b> 条</p>
+    <label class="switch" style="margin-bottom:10px"><input type="checkbox" id="dPurge">同时清除该场次的选片记录和模特链接</label>
+    <p class="sub">此操作不可恢复。点击「永久删除」后需<b>再点一次</b>确认才会执行。</p>
+    <div class="p-actions">
+      <button id="dCancel" class="b-outline">取消</button>
+      <button id="dFinal" class="b-danger">永久删除</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="notifyStack" aria-live="polite" aria-relevant="additions"></div>
+<dialog id="passwordDialog" style="width:min(92vw,420px);padding:24px;border:1px solid #AE6BFF;border-radius:12px;background:#141025;color:#F7F3FF">
+  <form id="passwordForm">
+    <h2 style="margin:0 0 18px">修改管理员密码</h2>
+    <label style="display:block;margin:12px 0">当前密码<input name="current" type="password" autocomplete="current-password" required maxlength="512" style="display:block;width:100%;margin-top:6px;padding:10px;color:#fff;background:#1C1534;border:1px solid #6D3AA2;border-radius:6px"></label>
+    <label style="display:block;margin:12px 0">新密码（至少 8 位）<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="512" style="display:block;width:100%;margin-top:6px;padding:10px;color:#fff;background:#1C1534;border:1px solid #6D3AA2;border-radius:6px"></label>
+    <label style="display:block;margin:12px 0">再次输入新密码<input name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="512" style="display:block;width:100%;margin-top:6px;padding:10px;color:#fff;background:#1C1534;border:1px solid #6D3AA2;border-radius:6px"></label>
+    <p id="passwordError" role="alert" style="color:#FF6879;min-height:1.5em"></p>
+    <div style="display:flex;gap:10px"><button type="submit" class="b-secondary">保存新密码</button><button type="button" id="passwordCancel" class="b-ghost">取消</button></div>
+  </form>
+</dialog>
+
+
+<script src="/auth.js"></script>
+<script src="/local-api.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ===== 皮肤切换：mecha-purple（UNIT-01）↔ nerv，localStorage 全站记忆 ===== */
+const SKINS=[["mecha-purple","UNIT-01"],["nerv","NERV"]];
+function applySkin(s){
+  document.documentElement.setAttribute("data-skin",s);
+  try{localStorage.setItem("pick.skin",s)}catch(e){}
+  const el=$("#skinName");if(el)el.textContent=(SKINS.find(x=>x[0]===s)||SKINS[0])[1];
+}
+$("#skinBtn").onclick=()=>{
+  const cur=document.documentElement.getAttribute("data-skin")||"mecha-purple";
+  const next=SKINS[(SKINS.findIndex(x=>x[0]===cur)+1)%SKINS.length][0];
+  applySkin(next);setStatus("界面皮肤已切换："+(SKINS.find(x=>x[0]===next)[1]));
+};
+try{applySkin((function(){try{return localStorage.getItem("pick.skin")}catch(e){return null}})()||"mecha-purple")}catch(e){}
+
+const state = { photos: [], selected: new Set(), results: [], session: "", savedStatus: "draft", dirty: false, lbIdx: -1, page: 1, pageSize: 20, filter: "all", quick: localStorage.getItem("pick.quick") !== "0" };
+
+/* 管理员身份由服务端签发的 HttpOnly 会话 Cookie 自动携带 */
+const auth = p => p;
+let photoVersion=Date.now();
+const photoUrl=k=>auth("/img/"+encodeURIComponent(k))+"?_v="+photoVersion;
+$("#passwordBtn").onclick=()=>{ $("#passwordForm").reset(); $("#passwordError").textContent=""; $("#passwordDialog").showModal() };
+$("#passwordCancel").onclick=()=>$("#passwordDialog").close();
+$("#passwordForm").onsubmit=async e=>{
+  e.preventDefault(); const form=e.currentTarget, data=new FormData(form), error=$("#passwordError");
+  if(data.get("password")!==data.get("confirm")){error.textContent="两次输入的新密码不一致";return}
+  const button=form.querySelector('[type="submit"]'); button.disabled=true; error.textContent="";
+  try { const r=await fetch("/api/password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({current:data.get("current"),password:data.get("password")})}); const result=await r.json(); if(!r.ok)throw new Error(result.error||"修改失败，请重试"); form.reset(); $("#passwordDialog").close(); showToast("密码已修改，其他设备需要重新登录") } catch(err){ error.textContent=err.message||"网络错误，请重试" } finally { button.disabled=false }
+};
+const base = k => k.split("/").pop();
+function currentSession(){return $("#session").value.trim().replace(/[/\\]/g,"")}
+
+function setStatus(t){ $("#status").textContent=t }
+let toastTimer;
+function showToast(msg, err){
+  const t=$("#toast");
+  t.textContent=msg;t.className=err?"err":"ok";
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"), err?9000:4000);
+}
+function refreshBadge(){
+  const b=$("#badge");
+  if(state.dirty){b.textContent="未保存";b.className="badge dirty"}
+  else if(state.savedStatus==="confirmed"){b.textContent="已提交";b.className="badge confirmed"}
+  else{b.textContent="选片中";b.className="badge"}
+}
+function refreshCount(){
+  $("#count").textContent=state.selected.size;
+  renderPickedList();
+}
+function syncGrid(name){
+  const el=document.querySelector('.tile[data-name="'+CSS.escape(name)+'"]');
+  if(el){
+    el.classList.toggle("is-sel",state.selected.has(name));
+    const pick=el.querySelector(".pick");
+    if(pick){const sel=state.selected.has(name);pick.textContent=sel?"✓":"＋";pick.setAttribute("aria-label",(sel?"取消选择 ":"选择 ")+name)}
+  }
+}
+function toggle(name){
+  state.selected.has(name)?state.selected.delete(name):state.selected.add(name);
+  syncGrid(name);state.dirty=true;refreshBadge();refreshCount();
+  if(state.lbIdx>=0)syncLbToggle();
+}
+
+function filteredPhotos(){
+  if(state.filter==="picked")return state.photos.filter(k=>state.selected.has(base(k)));
+  if(state.filter==="unpicked")return state.photos.filter(k=>!state.selected.has(base(k)));
+  return state.photos;
+}
+function renderPager(){
+  const f=filteredPhotos();
+  const tp=Math.max(1,Math.ceil(f.length/state.pageSize));
+  const info=state.page+" / "+tp;
+  $("#pgInfo").textContent=info;$("#pgInfo2").textContent=info;
+  $("#pgPrev").disabled=state.page<=1;$("#pgPrev2").disabled=state.page<=1;
+  $("#pgNext").disabled=state.page>=tp;$("#pgNext2").disabled=state.page>=tp;
+  $("#pager").hidden=state.photos.length===0;$(".bottom-pager").hidden=state.photos.length===0;
+}
+function renderGrid(){
+  const f=filteredPhotos();
+  const tp=Math.max(1,Math.ceil(f.length/state.pageSize));
+  if(state.page>tp)state.page=tp;
+  const start=(state.page-1)*state.pageSize;
+  const slice=f.slice(start,start+state.pageSize);
+  $("#grid").innerHTML=slice.map(key=>{
+    const name=base(key);
+    const sel=state.selected.has(name);
+    return "<figure class='tile"+(sel?" is-sel":"")+"' data-name='"+name+"'>"+
+      "<img loading='lazy' src='"+photoUrl(key)+"' data-open='"+name+"' alt='"+name+"'>"+
+      "<button class='zoom' title='查看大图' data-zoom='"+name+"'>🔍</button>"+
+      "<button class='pick' data-pick='"+name+"' aria-label='"+(sel?"取消选择 ":"选择 ")+name+"'>"+(sel?"✓":"＋")+"</button>"+
+      "<figcaption class='tname'>"+name+"</figcaption></figure>";
+  }).join("")||"<div class='empty'>这个场次还没有照片，把 JPG 拖到上方上传区</div>";
+  document.querySelectorAll("#grid img[data-open]").forEach(img=>img.onclick=()=>{
+    const name=img.dataset.open;
+    if(state.quick)toggle(name);
+    else openLb(state.photos.findIndex(k=>base(k)===name));
+  });
+  document.querySelectorAll("#grid .pick").forEach(b=>b.onclick=e=>{e.stopPropagation();toggle(b.dataset.pick)});
+  document.querySelectorAll("#grid .zoom").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    openLb(state.photos.findIndex(k=>base(k)===b.dataset.zoom));
+  });
+  renderPager();
+}
+
+async function refreshSessionList(){
+  const r=await fetch(auth("/api/sessions"));
+  if(r.status===403){document.body.innerHTML="<div class='empty'>登录已过期。<a href='/' style='color:#AE6BFF'>重新登录</a></div>";return false}
+  const list=await r.json();
+  $("#sessionList").innerHTML=list.map(s=>"<option value='"+s+"'>").join("");
+  return true;
+}
+function fmtBytes(n){
+  if(n>=1073741824)return (n/1073741824).toFixed(2)+" GB";
+  if(n>=1048576)return (n/1048576).toFixed(1)+" MB";
+  if(n>=1024)return (n/1024).toFixed(1)+" KB";
+  return n+" B";
+}
+async function refreshStats(){
+  try{
+    const r=await fetch(auth("/api/stats"));
+    if(!r.ok)throw new Error("存储统计读取失败");
+    const st=await r.json();
+    $("#stText").textContent="共 "+Number(st.photoCount||0)+" 张照片 · "+Number(st.sessionCount||0)+" 个场次";
+    const list=$("#stDatabases");list.replaceChildren();
+    if(!Array.isArray(st.databases)||!st.databases.length){
+      $("#stNote").textContent="各库容量暂不可用，请刷新后重试。";return;
+    }
+    const decimalBytes=n=>n>=1e9?(n/1e9).toFixed(2)+" GB":n>=1e6?(n/1e6).toFixed(1)+" MB":n>=1e3?(n/1e3).toFixed(1)+" KB":n+" B";
+    for(const [i,db] of st.databases.entries()){
+      const row=document.createElement("div");row.className="stats-db";
+      const name=document.createElement("span");name.className="stats-db-name";name.textContent=db.name||("照片库 "+(i+1));row.append(name);
+      const track=document.createElement("div");track.className="st-track";
+      const fill=document.createElement("div");fill.className="st-fill";track.append(fill);row.append(track);
+      const value=document.createElement("span");value.className="stats-db-value";
+      const used=Number(db.photoBytes),limit=Number(db.limitBytes||db.quotaBytes);
+      if(db.photoBytes==null||!Number.isFinite(used)||used<0||!Number.isFinite(limit)||limit<=0){
+        value.textContent="容量统计暂不可用";
+      }else{
+        const pct=Math.min(100,used/limit*100);
+        fill.style.width=pct.toFixed(1)+"%";
+        fill.style.background=pct>=90?"var(--err)":pct>=75?"var(--warn)":"var(--purple)";
+        value.textContent="照片数据约 "+decimalBytes(used)+" / 每库上限 "+decimalBytes(limit);
+      }
+      row.append(value);list.append(row);
+    }
+    $("#stNote").textContent="照片数据不含索引、选片记录和数据库碎片，实际占用可能更高；账户中其他数据库未计入。";
+  }catch{
+    $("#stText").textContent="存储统计读取失败";
+    $("#stDatabases").replaceChildren();$("#stNote").textContent="请点击刷新重试。";
+  }
+}
+$("#stRefresh").onclick=refreshStats;
+async function init(){
+  if(!(await refreshSessionList()))return;
+  const last=localStorage.getItem("pick.session");
+  if(last)$("#session").value=last;
+  const savedSize=Number(localStorage.getItem("pick.pageSize"));
+  if([20,50,100].includes(savedSize)){$("#pageSize").value=String(savedSize);state.pageSize=savedSize}
+  $("#quickMode").checked=state.quick;
+  updateQuickTip();
+  $("#quickMode").onchange=e=>{
+    state.quick=e.target.checked;
+    localStorage.setItem("pick.quick",state.quick?"1":"0");
+    updateQuickTip();
+  };
+  refreshStats();
+  if($("#session").value)loadPhotos();else refreshBadge();
+}
+function updateQuickTip(){}
+
+async function loadPhotos(){
+  state.session=currentSession();
+  if(!state.session){$("#grid").innerHTML="<div class='empty'>输入场次名（新建直接打字）或从建议中选择</div>";renderPager();return}
+  localStorage.setItem("pick.session",state.session);
+  setStatus("加载中…");
+  const r=await fetch(auth("/api/photos?session="+encodeURIComponent(state.session)));
+  state.photos=await r.json();
+  state.page=1;state.selected=new Set();state.dirty=false;state.savedStatus="draft";
+  renderGrid();
+  await restoreSaved();
+  refreshCount();refreshBadge();
+  setStatus("共 "+state.photos.length+" 张");
+}
+
+async function restoreSaved(){
+  const r=await fetch(auth("/api/selection?session="+encodeURIComponent(state.session)));
+  const d=await r.json();
+  if(d.filenames&&d.filenames.length){
+    for(const n of d.filenames)state.selected.add(n);
+    state.savedStatus=d.status||"draft";
+    renderGrid();
+    setStatus("已恢复之前保存的 "+d.filenames.length+" 张");
+  }else{state.savedStatus="draft"}
+}
+
+/* 筛选 */
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  state.filter=b.dataset.f;state.page=1;renderGrid();
+});
+
+/* 分页 */
+$("#pgPrev").onclick=()=>{if(state.page>1){state.page--;renderGrid()}};
+$("#pgNext").onclick=()=>{if(state.page<Math.max(1,Math.ceil(filteredPhotos().length/state.pageSize))){state.page++;renderGrid()}};
+$("#pgPrev2").onclick=$("#pgPrev").onclick;
+$("#pgNext2").onclick=$("#pgNext").onclick;
+$("#pageSize").onchange=e=>{
+  state.pageSize=Number(e.target.value);
+  localStorage.setItem("pick.pageSize",state.pageSize);
+  state.page=1;renderGrid();
+};
+
+/* 放大预览 */
+let lbRequest=0,lbLoadTimer;
+const lbPreloads=new Map();
+function preloadLbNeighbors(){
+  const urls=new Set([-1,1].map(step=>{
+    const idx=(state.lbIdx+step+state.photos.length)%state.photos.length;
+    return photoUrl(state.photos[idx]);
+  }));
+  for(const url of lbPreloads.keys())if(!urls.has(url))lbPreloads.delete(url);
+  for(const url of urls)if(!lbPreloads.has(url)){
+    const img=new Image();img.decoding="async";img.fetchPriority="low";
+    lbPreloads.set(url,img);img.src=url;
+  }
+}
+function openLb(idx){
+  if(idx<0||idx>=state.photos.length)return;
+  state.lbIdx=idx;renderLb();$("#lightbox").hidden=false;
+}
+function renderLb(retry=false){
+  const key=state.photos[state.lbIdx];
+  if(!key)return;
+  const request=++lbRequest;
+  clearTimeout(lbLoadTimer);
+  const oldImg=$("#lbImg"),img=new Image();
+  // 每次切换使用独立图片，慢请求不能保留旧画面或覆盖后来的照片。
+  oldImg.onload=oldImg.onerror=null;oldImg.removeAttribute("src");
+  img.id="lbImg";img.alt=base(key);img.decoding="async";img.fetchPriority="high";
+  img.style.visibility="hidden";oldImg.replaceWith(img);
+  $("#lbName").textContent=base(key);
+  $("#lbIdx").textContent=(state.lbIdx+1)+" / "+state.photos.length;
+  $("#lbToggle").disabled=true;
+  $("#lightbox").setAttribute("aria-busy","true");
+  $("#lbLoad").hidden=false;$("#lbRetry").hidden=true;
+  $("#lbLoadText").textContent="图片加载中…";
+  syncLbToggle();
+  const fail=message=>{
+    if(request!==lbRequest)return;
+    clearTimeout(lbLoadTimer);
+    $("#lightbox").setAttribute("aria-busy","false");
+    $("#lbLoadText").textContent=message;$("#lbRetry").hidden=false;
+  };
+  img.onload=()=>{
+    if(request!==lbRequest)return;
+    clearTimeout(lbLoadTimer);
+    img.style.visibility="visible";$("#lbLoad").hidden=true;
+    $("#lightbox").setAttribute("aria-busy","false");
+    $("#lbToggle").disabled=false;
+    preloadLbNeighbors();
+  };
+  img.onerror=()=>fail("图片加载失败，请重新加载或查看下一张");
+  lbLoadTimer=setTimeout(()=>fail("图片加载较慢，请重新加载或查看下一张"),20000);
+  img.src=photoUrl(key)+(retry?"&_retry="+Date.now():"");
+}
+function syncLbToggle(){
+  const key=state.photos[state.lbIdx];if(!key)return;
+  const on=state.selected.has(base(key));
+  const b=$("#lbToggle");
+  b.textContent=on?"✓ 已选（点此取消）":"✓ 选这张";
+  b.classList.toggle("on",on);
+}
+$("#lbPrev").onclick=()=>{state.lbIdx=(state.lbIdx-1+state.photos.length)%state.photos.length;renderLb()};
+$("#lbNext").onclick=()=>{state.lbIdx=(state.lbIdx+1)%state.photos.length;renderLb()};
+$("#lbClose").onclick=()=>{++lbRequest;clearTimeout(lbLoadTimer);lbPreloads.clear();$("#lightbox").hidden=true;state.lbIdx=-1};
+$("#lbRetry").onclick=()=>renderLb(true);
+$("#lbToggle").onclick=()=>{const key=state.photos[state.lbIdx];toggle(base(key))};
+document.addEventListener("keydown",e=>{
+  if($("#lightbox").hidden)return;
+  if(e.key==="ArrowLeft")$("#lbPrev").click();
+  else if(e.key==="ArrowRight")$("#lbNext").click();
+  else if(e.key===" ")$("#lbToggle").click();
+  else if(e.key==="Escape")$("#lbClose").click();
+});
+
+/* 已选清单 */
+function renderPickedList(){
+  const n=state.selected.size;
+  $("#pickedWrap").hidden=n===0;
+  $("#pkCount").textContent=n;
+  const list=[...state.selected].sort();
+  $("#pkList").innerHTML=list.map((name,i)=>"<div class='pick-row'><span class='no'>"+String(i+1).padStart(2,"0")+"</span><span class='nm'>"+esc(name)+"</span><button data-un='"+esc(name)+"'>✕</button></div>").join("");
+  $("#pkList").querySelectorAll("button").forEach(b=>b.onclick=()=>toggle(b.dataset.un));
+}
+$("#pkCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText([...state.selected].sort().join("\n"));showToast("文件名清单已复制（"+state.selected.size+" 个）")}
+  catch{showToast("复制失败",true)}
+};
+$("#pkConfirm").onclick=()=>$("#confirmBtn").click();
+
+/* 保存：超时 + 异常保护 */
+async function persist(status){
+  try{
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch(auth("/api/selection"),{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({session:state.session,filenames:[...state.selected],status}),signal:ctrl.signal});
+    clearTimeout(timer);
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      state.dirty=false;state.savedStatus=d.status;refreshBadge();renderPickedList();
+      return true;
+    }
+    showToast(d.error||("保存失败（HTTP "+r.status+"）"),true);return false;
+  }catch(err){
+    showToast("网络异常，保存未完成——你的勾选都还在，请重试",true);return false;
+  }
+}
+$("#saveDraft").onclick=async()=>{
+  const b=$("#saveDraft");b.disabled=true;
+  const ok=await persist("draft");
+  b.disabled=false;
+  if(ok)showToast("已暂存 "+state.selected.size+" 张，还未最终确认");
+};
+$("#confirmBtn").onclick=()=>{
+  if(!state.selected.size)return showToast("先勾选照片再确认",true);
+  $("#pCount").textContent=state.selected.size;
+  renderPanelList();
+  $("#panel").hidden=false;
+};
+function renderPanelList(){
+  const list=[...state.selected].sort();
+  $("#pList").innerHTML=list.map(n=>"<li><span class='nm'>"+n+"</span><button data-n='"+n+"'>✕</button></li>").join("");
+  $("#pList").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    state.selected.delete(b.dataset.n);syncGrid(b.dataset.n);
+    state.dirty=true;refreshBadge();refreshCount();
+    $("#pCount").textContent=state.selected.size;
+    renderPanelList();
+  });
+}
+$("#pCancel").onclick=()=>{$("#panel").hidden=true};
+$("#pFinal").onclick=async()=>{
+  const b=$("#pFinal");b.disabled=true;b.textContent="提交中…";
+  const ok=await persist("confirmed");
+  b.disabled=false;b.textContent="✓ 确认提交";
+  if(ok){
+    $("#panel").hidden=true;
+    showToast("✓ 已最终确认 "+state.selected.size+" 张，管理员可以开始移动原片了");
+  }
+};
+$("#clear").onclick=()=>{
+  state.selected=new Set();
+  document.querySelectorAll(".tile.is-sel").forEach(c=>c.classList.remove("is-sel"));
+  state.dirty=true;refreshBadge();refreshCount();
+  setStatus("已清空本页勾选（记得保存）");
+};
+
+/* 场次删除 */
+let dArmed=false,dArmTimer=null;
+function disarmDelete(){$("#dFinal").textContent="永久删除";dArmed=false;clearTimeout(dArmTimer)}
+$("#delBtn").onclick=async()=>{
+  state.session=currentSession();
+  if(!state.session)return showToast("先输入场次名并加载照片",true);
+  $("#dSession").textContent=state.session;
+  disarmDelete();
+  try{
+    const st=await (await fetch(auth("/api/stats?session="+encodeURIComponent(state.session)))).json();
+    $("#dPhotos").textContent=st.photoCount;
+    $("#dBytes").textContent=fmtBytes(st.photoBytes);
+    $("#dSel").textContent=st.selectionCount;
+    $("#dShares").textContent=st.shareCount;
+    $("#dPurge").checked=st.selectionCount>0||st.shareCount>0;
+  }catch{}
+  $("#delPanel").hidden=false;
+};
+$("#dCancel").onclick=()=>{disarmDelete();$("#delPanel").hidden=true};
+$("#dFinal").onclick=async()=>{
+  if(!dArmed){
+    dArmed=true;
+    $("#dFinal").textContent="⚠ 再点一次确认删除";
+    clearTimeout(dArmTimer);
+    dArmTimer=setTimeout(disarmDelete,4000);
+    return;
+  }
+  clearTimeout(dArmTimer);
+  const b=$("#dFinal");b.disabled=true;b.textContent="删除中…";
+  try{
+    const r=await fetch(auth("/api/sessions/delete"),{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({session:state.session,purge:$("#dPurge").checked})});
+    const d=await r.json().catch(()=>({}));
+    if(d.ok){
+      $("#delPanel").hidden=true;
+      showToast("✓ 已删除 "+d.photos+" 张照片，释放 "+fmtBytes(d.bytes)+(d.selections?" · 选片记录 "+d.selections+" 条":"")+(d.shares?" · 链接 "+d.shares+" 条":""));
+      state.selected=new Set();state.photos=[];state.dirty=false;state.savedStatus="draft";
+      $("#session").value="";
+      $("#grid").innerHTML="<div class='empty'>输入场次名后上传照片</div>";
+      refreshCount();refreshBadge();renderPager();refreshStats();refreshSessionList();
+    }else showToast(d.error||"删除失败",true);
+  }catch{showToast("删除请求失败，请重试",true)}
+  b.disabled=false;disarmDelete();
+};
+
+/* 分享管理 */
+$("#shareBtn").onclick=()=>{
+  state.session=currentSession();
+  if(!state.session)return showToast("先输入场次名并加载照片",true);
+  $("#shSession").textContent=state.session;
+  $("#shNew").hidden=true;
+  const opening=$("#shareBar").hidden;
+  if(opening)refreshShares();
+  $("#shareBar").hidden=!opening;
+};
+$("#shGen").onclick=async()=>{
+  const r=await fetch(auth("/api/shares"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session:state.session,permanent:$("#shPermanent").checked})});
+  const d=await r.json();
+  if(d.ok){
+    const full=location.origin+d.url;
+    $("#shNew").hidden=false;
+    $("#shNew").innerHTML="<b>新链接已生成（点击复制后发给模特）：</b><br><a href='"+full+"' target='_blank'>"+full+"</a>";
+    refreshShares();
+  }else showToast(d.error||"生成失败",true);
+};
+async function refreshShares(){
+  const r=await fetch(auth("/api/shares?session="+encodeURIComponent(state.session)));
+  const list=await r.json();
+  $("#shList").innerHTML=list.length?list.map(s=>{
+    const full=location.origin+s.url;
+    const expiry=s.permanent?"<span class='st' style='color:var(--lime)'>永久有效</span>"
+      :s.expired?"<span class='st' style='color:var(--tx3)'>已失效</span>"
+      :"<span class='st' style='color:var(--warn)'>有效至 "+new Date(s.expires_at).toLocaleDateString("zh-CN")+"</span>";
+    return "<div class='share-row'><a href='"+full+"' target='_blank'>"+full+"</a>"+expiry+
+      "<button data-act='copy' data-u='"+full+"' class='b-ghost'>复制</button>"+
+      (s.expired?"":("<button data-act='perm' data-t='"+s.token+"' class='b-ghost'>"+(s.permanent?"":"设为永久")+"</button>"))+
+      "<button data-act='del' data-t='"+s.token+"' class='b-danger'>删除</button></div>";
+  }).join(""):"<div class='tip'>这个场次还没有生成过链接</div>";
+  $("#shList").querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    const act=b.dataset.act;
+    if(act==="copy"){await navigator.clipboard.writeText(b.dataset.u);setStatus("链接已复制")}
+    else if(act==="perm"){
+      await fetch(auth("/api/shares/permanent"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:b.dataset.t})});
+      refreshShares();setStatus("已设为永久有效");
+    }else if(act==="del"){
+      if(!confirm("删除这条链接？模特将无法再访问，其选片记录也会一并清除。"))return;
+      await fetch(auth("/api/shares/delete"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:b.dataset.t})});
+      refreshShares();setStatus("链接已删除");
+    }
+  });
+}
+
+/* 结果查看 */
+$("#resultBtn").onclick=()=>{
+  state.session=currentSession();
+  if(!state.session)return showToast("先输入场次名并加载照片",true);
+  $("#rSession").textContent=state.session;
+  refreshResults();
+  $("#resultPanel").hidden=false;
+};
+$("#rClose").onclick=()=>$("#resultPanel").hidden=true;
+function resultFilenames(){
+  return [...new Set(state.results.flatMap(x=>Array.isArray(x.filenames)?x.filenames:[]).filter(name=>typeof name==="string"&&name.length))].sort((a,b)=>a.localeCompare(b,"zh-CN",{numeric:true}));
+}
+async function refreshResults(){
+  state.results=[];
+  $("#copyAllResults").disabled=true;
+  $("#copyAiPrompt").disabled=true;
+  const r=await fetch(auth("/api/selections?session="+encodeURIComponent(state.session)));
+  const data=await r.json();
+  const list=Array.isArray(data)?data:[];
+  state.results=list;
+  const hasResult=resultFilenames().length>0;
+  $("#copyAllResults").disabled=!hasResult;
+  $("#copyAiPrompt").disabled=!hasResult;
+  $("#rList").innerHTML=list.length?list.map(x=>{
+    const who=x.token==="admin"?"管理员":"模特链接 "+String(x.token).slice(0,8);
+    const st=x.status==="confirmed"?"<span class='st confirmed'>✓ 已确认</span>":"<span class='st'>草稿</span>";
+    return "<div class='res-row'><div class='head'><b>"+who+"</b><span>"+x.count+" 张</span>"+st+"<span class='when'>"+new Date(x.updated_at).toLocaleString("zh-CN")+"</span></div><details><summary>展开文件名</summary><div class='fns'>"+x.filenames.join("<br>")+"</div></details></div>";
+  }).join(""):"<div class='empty'>这个场次还没有人选</div>";
+}
+$("#copyAllResults").onclick=async()=>{
+  const filenames=resultFilenames();
+  if(!filenames.length)return;
+  try{await navigator.clipboard.writeText(filenames.join("\n"));showToast("已复制全部文件名（"+filenames.length+" 个）")}
+  catch{showToast("复制失败，请检查浏览器剪贴板权限",true)}
+};
+
+/* 复制 AI 提示词：把已选清单 + 未选归入文件夹的规则打包成一段可直接粘贴的指令 */
+function targetFolder(){
+  const el=$("#aiFolder");
+  const v=el?el.value.trim().replace(/[/\\]/g,"").slice(0,40):"";
+  return v||"00-未选";
+}
+function buildAiPrompt(){
+  const session=state.session||currentSession();
+  const names=resultFilenames();
+  const folder=targetFolder();
+  const list=names.map((n,i)=>(i+1)+". "+n).join("\n");
+  return [
+    "你是我的网盘文件整理助手，现在执行一次「选片结果落盘」任务：把这一场里没被选中的原片移动到一个单独文件夹。全程只移动文件，不删除、不覆盖、不改名。",
+    "",
+    "【一、目标位置】",
+    "场次目录："+session,
+    "目标文件夹："+session+"/"+folder+"（不存在就新建；名字以 00- 开头，排序时排在该目录第一位）",
+    "",
+    "【二、判定规则】",
+    "1. 处理场次目录下的全部 RAW 原片（.ARW .CR2 .CR3 .NEF .RAF .DNG .ORF .RW2 .SR2 .PEF）。",
+    "2. 按文件名去掉扩展名后比对，大小写不敏感。",
+    "3. 带 -2 / -3 / -4 这类调色副本后缀的，先去掉后缀回退到基础名，再和清单比对。",
+    "4. 出现在下面「已选清单」里的 = 选中，留在原地；没出现的 = 未选，移入目标文件夹。",
+    "",
+    "【三、已选清单】共 "+names.length+" 张（场次「"+session+"」）",
+    list,
+    "",
+    "【四、执行步骤】",
+    "1. 列出场次目录「"+session+"」下的全部 RAW 原片，报告总数。",
+    "2. 按上面的规则算出未选清单，先把「未选数量 + 前 20 个文件名」发给我确认。",
+    "3. 我回复「确认」后再开始移动；分批进行，每批不超过 100 个。",
+    "4. 完成后回报：已移动 X 张、已选跳过 Y 张、异常 Z 张（附异常文件名）。",
+    "",
+    "【五、硬性约束】",
+    "- 不移动、不覆盖、不删除任何已选中的照片。",
+    "- 目标文件夹里已有同名文件时不要覆盖，先报告。",
+    "- 只在场次目录「"+session+"」内操作，不动其他目录。"
+  ].join("\n");
+}
+$("#copyAiPrompt").onclick=async()=>{
+  const names=resultFilenames();
+  if(!names.length)return showToast("这个场次还没有已确认的选片",true);
+  try{
+    await navigator.clipboard.writeText(buildAiPrompt());
+    showToast("✓ AI 提示词已复制（"+names.length+" 张已选，未选归入「"+targetFolder()+"」）\n粘贴到 AI 工具即可，它会先列未选清单等你确认");
+  }catch{
+    showToast("复制失败，请检查浏览器剪贴板权限",true);
+  }
+};
+
+/* 上传：浏览器端压缩（长边 1600 / 质量 0.85），拖原图也能用 */
+async function compressImage(file){
+  const bitmap=await createImageBitmap(file);
+  let c;
+  try{
+    // 已导出的合规 JPG 直接上传，省去再次编码，也保留原有画质。
+    if(/\.jpe?g$/i.test(file.name)&&file.size<=900*1024&&Math.max(bitmap.width,bitmap.height)<=1600)return file;
+    const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
+    c=document.createElement("canvas");
+    for(let size=0;size<4;size++){
+      const s=scale*Math.pow(.8,size);
+      c.width=Math.round(bitmap.width*s)||1;c.height=Math.round(bitmap.height*s)||1;
+      c.getContext("2d").drawImage(bitmap,0,0,c.width,c.height);
+      for(const quality of [.85,.72,.6,.48,.36]){
+        const blob=await new Promise(res=>c.toBlob(res,"image/jpeg",quality));
+        if(!blob)throw new Error("图片压缩失败");
+        if(blob.size<=900*1024)return blob;
+      }
+    }
+    throw new Error("压缩后仍超过 900KB，请先缩小图片");
+  }finally{
+    if(bitmap.close)bitmap.close();
+    if(c){c.width=0;c.height=0}
+  }
+}
+let uploading=false;
+window.addEventListener("beforeunload",e=>{if(uploading){e.preventDefault();e.returnValue=""}});
+function chooseDuplicateAction(files){
+  $("#duplicateSummary").textContent="所选文件中有 "+files.length+" 张与当前场次已有照片同名，请选择处理方式。";
+  $("#duplicateNames").textContent=files.slice(0,8).map(f=>f.name).join("\n")+(files.length>8?"\n……还有 "+(files.length-8)+" 张":"");
+  $("#duplicatePanel").hidden=false;
+  $("#duplicateSkip").focus();
+  return new Promise(resolve=>{
+    const finish=choice=>{
+      $("#duplicatePanel").hidden=true;
+      document.removeEventListener("keydown",onKey);
+      $("#duplicateSkip").onclick=$("#duplicateOverwrite").onclick=$("#duplicateCancel").onclick=null;
+      resolve(choice);
+    };
+    const onKey=e=>{if(e.key==="Escape"){e.preventDefault();finish("cancel")}};
+    $("#duplicateSkip").onclick=()=>finish("skip");
+    $("#duplicateOverwrite").onclick=()=>finish("overwrite");
+    $("#duplicateCancel").onclick=()=>finish("cancel");
+    document.addEventListener("keydown",onKey);
+  });
+}
+function showUploadReport(summary,failed){
+  $("#uploadReportSummary").textContent=summary+"。请检查下方文件后重新上传。";
+  $("#uploadErrors").textContent=failed.join("\n");
+  $("#uploadReport").hidden=false;
+  $("#uploadReportClose").focus();
+}
+$("#uploadReportClose").onclick=()=>{$("#uploadReport").hidden=true};
+async function sendUpload(key,blob,overwrite){
+  let lastError="上传失败，请重试";
+  for(let attempt=0;attempt<3;attempt++){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),45000);
+    try{
+      const r=await fetch(auth("/api/upload?obj="+encodeURIComponent(key)+"&prechecked=1"+(overwrite?"&overwrite=1":"")),{method:"PUT",body:blob,signal:controller.signal});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok&&d.ok)return d;
+      lastError=d.error||("HTTP "+r.status);
+      if(r.status===507||["STORAGE_FULL","DATABASE_FULL","CAPACITY_FULL"].includes(d.code)){
+        throw Object.assign(new Error(d.error||"存储空间已满，请联系管理员处理后重试"),{code:"STORAGE_FULL"});
+      }
+      if(r.status!==429&&r.status<500)throw new Error(lastError);
+    }catch(err){
+      if(err.name==="AbortError")lastError="上传超时";
+      else if(err instanceof TypeError)lastError="网络连接失败";
+      else throw err;
+    }finally{clearTimeout(timer)}
+    if(attempt<2)await new Promise(resolve=>setTimeout(resolve,400*Math.pow(2,attempt)));
+  }
+  throw new Error(lastError);
+}
+async function uploadFiles(rawFiles){
+  if(uploading){showToast("正在上传，请等当前批次完成",true);return}
+  const session=currentSession();
+  if(!session){showToast("先输入场次名（新建直接打字）",true);return}
+  state.session=session;
+  const files=Array.from(rawFiles);
+  if(!files.length){showToast("没有可识别的图片文件",true);return}
+  uploading=true;
+  const controls=[$("#session"),$("#fileInput"),$("#delBtn")];
+  const disabled=controls.map(el=>el.disabled);
+  controls.forEach(el=>el.disabled=true);$("#drop").setAttribute("aria-busy","true");
+  let ok=0,overwritten=0,completed=0,capacityError="";const skipped=[],failed=[];
+  try{
+    let existing;
+    try{
+      setStatus("正在检查当前场次已有照片…");
+      const r=await fetch(auth("/api/photos?session="+encodeURIComponent(session)));
+      if(!r.ok)throw new Error("无法读取照片列表");
+      const keys=await r.json();
+      if(!Array.isArray(keys))throw new Error("照片列表无效");
+      existing=new Set(keys);
+    }catch{
+      setStatus("检查失败，未开始上传");
+      showToast("无法检查当前场次已有照片，请重试",true);return;
+    }
+    const original=new Set(existing);
+    const matches=files.filter(f=>! /\.(arw|cr2|cr3|nef|raf|dng|orf|rw2)$/i.test(f.name)&&(/\.(jpe?g|png)$/i.test(f.name)||f.type.startsWith("image/"))&&original.has(session+"/"+f.name.replace(/\.[^.]+$/,"")+".jpg"));
+    let duplicateAction="skip";
+    if(matches.length){
+      duplicateAction=await chooseDuplicateAction(matches);
+      if(duplicateAction==="cancel"){setStatus("已取消上传");return}
+    }
+    // 压缩逐张进行，传输最多并行 4 张，避免同时解码多张原图占用大量内存。
+    const pending=new Set(),byKey=new Map(),handled=new Set();
+    const progress=()=>setStatus("上传中 "+completed+"/"+files.length+" · 新增 "+ok+(overwritten?" · 覆盖 "+overwritten:"")+" · 跳过 "+skipped.length+(failed.length?" · 失败 "+failed.length:""));
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      if(/\.(arw|cr2|cr3|nef|raf|dng|orf|rw2)$/i.test(f.name)){
+        failed.push(f.name+"：这是 RAW 原片，浏览器无法显示，请先导出 JPG");completed++;progress();continue;
+      }
+      if(!/\.(jpe?g|png)$/i.test(f.name)&&!f.type.startsWith("image/")){
+        failed.push(f.name+"：不支持该文件格式，请先导出 JPG 或 PNG");completed++;progress();continue;
+      }
+      // 所有预览都保存为 JPG，按最终文件名检查，压缩前就跳过重复项。
+      const stem=f.name.replace(/\.[^.]+$/,"");
+      const key=session+"/"+stem+".jpg";
+      // 同名文件等待首次上传的结果：成功则跳过，失败仍可重试。
+      if(byKey.has(key))await byKey.get(key);
+      const overwrite=duplicateAction==="overwrite"&&original.has(key)&&!handled.has(key);
+      if(existing.has(key)&&!overwrite){skipped.push(f.name);completed++;progress();continue}
+      while(pending.size>=4)await Promise.race(pending);
+      if(capacityError){failed.push(f.name+"："+capacityError);completed++;progress();continue}
+      let blob;
+      try{
+        setStatus("正在处理："+f.name+" · 已完成 "+completed+"/"+files.length);
+        blob=await compressImage(f);
+      }catch(err){failed.push(f.name+"："+(err.message||"图片处理失败，请重试"));completed++;progress();continue}
+      if(capacityError){failed.push(f.name+"："+capacityError);completed++;progress();continue}
+      const task=(async()=>{
+        try{
+          const d=await sendUpload(key,blob,overwrite);
+          existing.add(key);handled.add(key);
+          if(d.skipped)skipped.push(f.name);else if(d.replaced){overwritten++;photoVersion=Date.now()+Math.random()}else ok++;
+        }catch(err){
+          if(err.code==="STORAGE_FULL")capacityError=err.message;
+          failed.push(f.name+"："+(err.message||"上传失败，请重试"));
+        }
+        finally{completed++;progress()}
+      })();
+      pending.add(task);byKey.set(key,task);
+      task.then(()=>{pending.delete(task);if(byKey.get(key)===task)byKey.delete(key)});
+    }
+    await Promise.all(pending);
+    const summary="上传完成：新增 "+ok+" 张"+(overwritten?" · 覆盖 "+overwritten+" 张":"")+" · 重复跳过 "+skipped.length+" 张"+(failed.length?" · 失败 "+failed.length+" 张":"");
+    let refreshFailed=false;
+    try{await loadPhotos();await Promise.all([refreshStats(),refreshSessionList()])}catch{refreshFailed=true}
+    setStatus(summary);
+    if(failed.length)showUploadReport(summary+(refreshFailed?" · 列表刷新失败，请刷新页面":""),failed);
+    else showToast(summary+(refreshFailed?"\n列表刷新失败，请刷新页面":""),refreshFailed);
+  }finally{
+    uploading=false;controls.forEach((el,i)=>el.disabled=disabled[i]);$("#drop").removeAttribute("aria-busy");
+  }
+}
+const drop=$("#drop");
+drop.onclick=()=>$("#fileInput").click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};
+drop.ondragleave=()=>drop.classList.remove("over");
+drop.ondrop=async e=>{
+  e.preventDefault();drop.classList.remove("over");
+  await uploadFiles([...e.dataTransfer.files]);
+};
+$("#fileInput").onchange=e=>{const fs=[...e.target.files];e.target.value="";if(fs.length)uploadFiles(fs)};
+
+/* 场次切换 */
+$("#session").onchange=()=>{state.selected=new Set();state.dirty=false;loadPhotos()};
+$("#session").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.blur()});
+
+/* ===== 实时通知：模特提交选片后右上角弹出 ===== */
+const NOTIFY_SINCE_KEY="pick.notifySince";
+const notifySeen=new Set();
+let notifyTimer=null;
+
+function notifySince(){
+  const fallback=new Date(Date.now()-30*60e3).toISOString();
+  let v="";
+  try{v=localStorage.getItem(NOTIFY_SINCE_KEY)||""}catch(e){}
+  if(!/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(v))return fallback;
+  const t=new Date(v).getTime();
+  if(!Number.isFinite(t)||Date.now()-t>6*3600e3)return fallback;
+  return v;
+}
+function rememberNotifySince(v){
+  if(!v)return;
+  try{localStorage.setItem(NOTIFY_SINCE_KEY,v)}catch(e){}
+}
+function timeAgo(iso){
+  const t=new Date(iso).getTime();
+  if(!Number.isFinite(t))return "";
+  const diff=Math.max(0,Date.now()-t);
+  if(diff<60e3)return "刚刚";
+  if(diff<3600e3)return Math.floor(diff/60e3)+" 分钟前";
+  if(diff<86400e3)return Math.floor(diff/3600e3)+" 小时前";
+  return new Date(t).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function placeNotifyStack(){
+  const bar=document.querySelector(".topbar"),stack=$("#notifyStack");
+  if(bar&&stack)stack.style.top=(bar.offsetHeight+10)+"px";
+}
+function pushNotify(item){
+  const stack=$("#notifyStack");
+  if(!stack)return;
+  placeNotifyStack();
+  const card=document.createElement("div");
+  card.className="notify-card";
+  card.tabIndex=0;
+  card.setAttribute("role","button");
+  card.dataset.session=item.session||"";
+  card.setAttribute("aria-label","场次 "+(item.session||"")+" 有新的选片提交，点击查看");
+  card.innerHTML="<div class='nt-head'><span>🔔 模特提交了选片</span></div>"+
+    "<div class='nt-title'>场次「"+esc(item.session||"")+"」</div>"+
+    "<div class='nt-meta'>"+Number(item.count||0)+" 张 · "+timeAgo(item.updated_at)+" · 点击查看</div>"+
+    "<button class='nt-close' type='button' aria-label='关闭通知'>✕</button>";
+  stack.prepend(card);
+  while(stack.children.length>4)stack.lastElementChild.remove();
+  setTimeout(()=>{if(card.isConnected)card.remove()},60000);
+}
+function openNotifySession(session){
+  if(!session)return;
+  $("#session").value=session;
+  state.selected=new Set();state.dirty=false;state.savedStatus="draft";
+  loadPhotos().then(()=>$("#resultBtn").click()).catch(()=>{});
+}
+$("#notifyStack").addEventListener("click",e=>{
+  const close=e.target.closest(".nt-close");
+  if(close){close.closest(".notify-card").remove();return}
+  const card=e.target.closest(".notify-card");
+  if(!card)return;
+  const session=card.dataset.session;
+  card.remove();
+  openNotifySession(session);
+});
+$("#notifyStack").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const card=e.target.closest(".notify-card");
+  if(!card)return;
+  e.preventDefault();
+  const session=card.dataset.session;
+  card.remove();
+  openNotifySession(session);
+});
+async function pollNotifications(){
+  if(document.visibilityState!=="visible")return;
+  if(!document.querySelector("#session"))return;
+  try{
+    const r=await fetch(auth("/api/notifications?since="+encodeURIComponent(notifySince())),{cache:"no-store"});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(!d||typeof d!=="object")return;
+    const fresh=[];
+    for(const item of (Array.isArray(d.items)?d.items:[])){
+      const key=String(item.token||"")+"|"+String(item.session||"")+"|"+String(item.updated_at||"");
+      if(notifySeen.has(key))continue;
+      notifySeen.add(key);fresh.push(item);
+    }
+    fresh.sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at)));
+    for(const item of fresh)pushNotify(item);
+    rememberNotifySince(d.serverTime);
+  }catch(e){}
+}
+function startNotifyPolling(){
+  if(notifyTimer||!document.querySelector("#session"))return;
+  placeNotifyStack();
+  window.addEventListener("resize",placeNotifyStack);
+  pollNotifications();
+  notifyTimer=setInterval(pollNotifications,15000);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible")pollNotifications();
+  });
+}
+
+init().then(startNotifyPolling).catch(()=>{});
+</script>
+</body>
+</html>
